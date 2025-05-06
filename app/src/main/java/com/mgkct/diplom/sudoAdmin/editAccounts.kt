@@ -1,0 +1,456 @@
+package com.mgkct.diplom.SudoAdmin
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberImagePainter
+import com.mgkct.diplom.ApiService
+import com.mgkct.diplom.LoginScreen
+import com.mgkct.diplom.R
+import com.mgkct.diplom.RetrofitInstance
+import com.mgkct.diplom.sudoAdmin.MainSudoAdminScreen
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.ui.platform.LocalContext
+import com.mgkct.diplom.sendEmail
+import kotlinx.coroutines.delay
+
+class EditAccountsActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            val navController = rememberNavController()
+            NavHost(navController = navController, startDestination = "edit_accounts") {
+                composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
+                composable("login_screen") { LoginScreen(navController) }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditAccountsScreen(navController: NavController) {
+    var searchQuery by remember { mutableStateOf("") }
+    var showDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf<ApiService.User?>(null) }
+    var userToEdit by remember { mutableStateOf<ApiService.User?>(null) }
+    var refreshTrigger by remember { mutableStateOf(0) } // Добавляем триггер для обновления
+    val usersList = remember { mutableStateListOf<ApiService.User>() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(refreshTrigger) { // Добавляем refreshTrigger в зависимости
+        try {
+            val users = RetrofitInstance.api.getUsers()
+            usersList.clear()
+            usersList.addAll(users)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    val filteredUsers = usersList.filter {
+        (it.fullName ?: "").contains(searchQuery, ignoreCase = true) ||
+                (it.email ?: "").contains(searchQuery, ignoreCase = true) ||
+                (it.centerName ?: "").contains(searchQuery, ignoreCase = true) ||
+                (it.key ?: "").contains(searchQuery, ignoreCase = true)
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Управление аккаунтами") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Добавить пользователя")
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(id = R.drawable.background_image),
+                contentDescription = "Background Image",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Column(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Поиск пользователей") },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Очистить")
+                            }
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (filteredUsers.isEmpty() && searchQuery.isNotEmpty()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Top,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Text(
+                            "Ничего не найдено",
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        Image(
+                            painter = rememberImagePainter(R.drawable.undefined),
+                            contentDescription = "Animated GIF",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(300.dp)
+                        )
+                    }
+                } else {
+                    LazyColumn {
+                        items(filteredUsers) { user ->
+                            UserItem(
+                                user = user,
+                                onDelete = { showDeleteDialog = user },
+                                onEdit = { userToEdit = it }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDialog || userToEdit != null) {
+        AddOrEditUserDialog(
+            user = userToEdit,
+            onDismiss = {
+                showDialog = false
+                userToEdit = null
+            },
+            onSaveUser = { user ->
+                showDialog = false
+                userToEdit = null
+                coroutineScope.launch {
+                    try {
+                        if (user.id == 0) {
+                            val newUser = RetrofitInstance.api.addUser(user)
+                            usersList.add(newUser)
+                            snackbarHostState.showSnackbar("Пользователь ${user.fullName} успешно добавлен")
+                        } else {
+                            val updatedUser = RetrofitInstance.api.updateUser(user.id, user)
+                            val index = usersList.indexOfFirst { it.id == user.id }
+                            if (index != -1) {
+                                usersList[index] = updatedUser
+                            }
+                            snackbarHostState.showSnackbar("Информация о пользователе ${user.fullName} обновлена")
+                        }
+                        refreshTrigger++ // Обновляем данные после сохранения
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        snackbarHostState.showSnackbar("Ошибка при сохранении данных пользователя")
+                    }
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog != null) {
+        ConfirmDeleteDialog(
+            user = showDeleteDialog!!,
+            onDismiss = { showDeleteDialog = null },
+            onConfirmDelete = {
+                coroutineScope.launch {
+                    try {
+                        RetrofitInstance.api.deleteUser(it.id)
+                        usersList.remove(it)
+                        snackbarHostState.showSnackbar("Пользователь ${it.fullName} был удален")
+                        refreshTrigger++ // Обновляем данные после удаления
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        snackbarHostState.showSnackbar("Ошибка при удалении пользователя")
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun ConfirmDeleteDialog(user: ApiService.User, onDismiss: () -> Unit, onConfirmDelete: (ApiService.User) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Подтверждение удаления") },
+        text = { Text("Вы уверены, что хотите удалить пользователя ${user.fullName}?") },
+        confirmButton = {
+            Button(onClick = {
+                onConfirmDelete(user)
+                onDismiss()
+            }) {
+                Text("Удалить")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddOrEditUserDialog(
+    user: ApiService.User?,
+    onDismiss: () -> Unit,
+    onSaveUser: (ApiService.User) -> Unit
+) {
+    var key by remember { mutableStateOf(user?.key ?: "") }
+    var fullName by remember { mutableStateOf(user?.fullName ?: "") }
+    var email by remember { mutableStateOf(user?.email ?: "") }
+    var address by remember { mutableStateOf(user?.address ?: "") }
+    var role by remember { mutableStateOf(user?.role ?: "user") }
+    var expanded by remember { mutableStateOf(false) } // Состояние для раскрытия меню
+    val roles = listOf("user", "admin", "doctor") // Доступные роли
+    var medCenterId by remember { mutableStateOf(user?.medCenterId?.toString() ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (user == null) "Добавить пользователя" else "Редактировать пользователя") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = { key = it },
+                    label = { Text("Ключ лицензии") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = fullName,
+                    onValueChange = { fullName = it },
+                    label = { Text("ФИО") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Адрес") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        modifier = Modifier.menuAnchor(),
+                        readOnly = true,
+                        value = role,
+                        onValueChange = {},
+                        label = { Text("Роль") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        }
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        roles.forEach { roleOption ->
+                            DropdownMenuItem(
+                                text = { Text(roleOption) },
+                                onClick = {
+                                    role = roleOption
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = medCenterId,
+                    onValueChange = { medCenterId = it },
+                    label = { Text("Айди центра") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val newUser = ApiService.User(
+                        id = user?.id ?: 0,
+                        key = key,
+                        fullName = fullName,
+                        email = email,
+                        address = address,
+                        role = role,
+                        medCenterId = medCenterId.toIntOrNull(),
+                        tgId = user?.tgId // Сохраняем существующий tgId при редактировании
+                    )
+                    onSaveUser(newUser)
+                }
+            ) {
+                Text("Сохранить")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
+
+@Composable
+fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.User) -> Unit) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var isSendingEnabled by remember { mutableStateOf(true) } // Флаг для кулдауна
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(4.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("ФИО: ${user.fullName}", style = MaterialTheme.typography.titleMedium)
+                    Text("Ключ: ${"*".repeat(user.key?.length ?: 0)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Email: ${user.email}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Адрес: ${user.address}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Роль: ${user.role}", style = MaterialTheme.typography.bodyMedium)
+                    Text("ID центра: ${user.medCenterId}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Telegram ID: ${user.tgId}", style = MaterialTheme.typography.bodyMedium)
+                }
+                Column {
+                    IconButton(onClick = { onEdit(user) }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Удалить")
+                    }
+                    IconButton(
+                        onClick = {
+                            if (isSendingEnabled) {
+                                coroutineScope.launch {
+                                    try {
+                                        sendEmail(user.email ?: "Email не найден", user.key ?: "Ключ не найден")
+                                        snackbarHostState.showSnackbar(
+                                            "Письмо успешно отправлено на ${user.email}",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        // Активируем кулдаун
+                                        isSendingEnabled = false
+                                        // Через 7 секунд снова разрешаем отправку
+                                        coroutineScope.launch(Dispatchers.Main) {
+                                            delay(7000)
+                                            isSendingEnabled = true
+                                        }
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar(
+                                            "Ошибка при отправке письма: ${e.localizedMessage}",
+                                            duration = SnackbarDuration.Long
+                                        )
+                                    }
+                                }
+                            } else {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        "Подождите 7 секунд перед следующей отправкой",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            }
+                        },
+                        enabled = isSendingEnabled
+                    ) {
+                        Icon(
+                            Icons.Default.Email,
+                            contentDescription = "Отправить",
+                            tint = if (isSendingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        )
+                    }
+                }
+            }
+            // Добавляем SnackbarHost для этого элемента
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun PreviewScreen() {
+    val navController = rememberNavController()
+    EditAccountsScreen(navController)
+}
