@@ -29,8 +29,9 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".sudoAdmin.MainSudoAdminActivity" />
-        <activity android:name=".sudoAdmin.EditAccountsActivity" />
+        <activity android:name=".SudoAdmin.MainSudoAdminActivity" />
+        <activity android:name=".SudoAdmin.EditAccountsActivity" />
+        <activity android:name=".Admin.MainAdminActivity" />
     </application>
 
 </manifest>

@@ -1,4 +1,4 @@
-package com.mgkct.diplom.sudoAdmin
+package com.mgkct.diplom.SudoAdmin
 
 import android.content.Context
 import android.os.Bundle
@@ -18,9 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddBusiness
-import androidx.compose.material.icons.filled.AddModerator
-import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
@@ -55,11 +52,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mgkct.diplom.LoginScreen
 import com.mgkct.diplom.R
-import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.FloatEntry
+import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
 
 class MainSudoAdminActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -171,9 +168,26 @@ fun MainSudoAdminScreen(navController: NavController) {
 //                                    Icon(Icons.Default.Assessment, contentDescription = "Отчёты")
 //                                }
 //                            )
+                            val context = LocalContext.current // Объявляем контекст один раз в Composable
+
                             DropdownMenuItem(
                                 text = { Text("Выйти из аккаунта") },
-                                onClick = { navController.navigate("login_screen") },
+                                onClick = {
+                                    // Очищаем SharedPreferences
+                                    val sharedPref = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                                    with(sharedPref.edit()) {
+                                        clear() // Очищаем все данные
+                                        apply() // Применяем изменения
+                                    }
+                                    // Переходим на экран входа
+                                    navController.navigate("login_screen") {
+                                        // Очищаем back stack, чтобы нельзя было вернуться назад
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            inclusive = true
+                                        }
+                                    }
+                                    menuExpanded = false // Закрываем меню
+                                },
                                 leadingIcon = {
                                     Icon(Icons.Default.ExitToApp, contentDescription = "Выйти из аккаунта")
                                 }

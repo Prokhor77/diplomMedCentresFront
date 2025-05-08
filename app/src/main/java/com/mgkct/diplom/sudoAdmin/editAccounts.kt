@@ -1,5 +1,6 @@
 package com.mgkct.diplom.SudoAdmin
 
+import MainAdminScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,7 +22,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,8 +31,6 @@ import com.mgkct.diplom.ApiService
 import com.mgkct.diplom.LoginScreen
 import com.mgkct.diplom.R
 import com.mgkct.diplom.RetrofitInstance
-import com.mgkct.diplom.sudoAdmin.MainSudoAdminScreen
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.material3.DropdownMenuItem
@@ -50,6 +48,7 @@ class EditAccountsActivity : ComponentActivity() {
             NavHost(navController = navController, startDestination = "edit_accounts") {
                 composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
+                composable("main_admin") { MainAdminScreen(navController) }
             }
         }
     }
