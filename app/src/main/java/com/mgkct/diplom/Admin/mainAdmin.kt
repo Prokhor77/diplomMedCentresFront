@@ -83,8 +83,6 @@ class MainAdminActivity : ComponentActivity() {
             }
         }
     }
-
-
 }
 
 @Composable
