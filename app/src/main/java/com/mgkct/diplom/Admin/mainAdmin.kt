@@ -21,8 +21,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -54,6 +56,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
+import com.mgkct.diplom.Admin.FeedBackEdit
 import com.mgkct.diplom.LoginActivity
 import com.mgkct.diplom.R
 
@@ -63,7 +67,10 @@ class MainAdminActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
             NavHost(navController, startDestination = "main_admin") {
+                composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
+                composable("edit_feedback") { FeedBackEdit(navController) }
                 composable("login_screen") {
+
 
                     val sharedPref = LocalContext.current.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
                     val fullName = sharedPref.getString("fullName", "Имя не найдено") ?: "Имя не найдено"
@@ -101,8 +108,8 @@ fun MainAdminScreen(navController: NavController) {
     val medicalCenter = centerName
     val totalAppointments = 35
     val totalDoctors = 134
-    val doctorsOnShift = 78
-    val sickDoctors = 6
+    val doctorsrate = 4.3
+    val inpPatients = 6
 
     val registeredPatients = 120
     val avgWaitingTime = "15 минут"
@@ -119,8 +126,8 @@ fun MainAdminScreen(navController: NavController) {
     val data = listOf(
         "Приемов за сегодня: $totalAppointments",
         "Общее кол-во врачей: $totalDoctors",
-        "Врачей на смене: $doctorsOnShift",
-        "Врачей на больничном: $sickDoctors"
+        "Общий рейтинг врачей: $doctorsrate",
+        "Количество пациентов стац лечения: $inpPatients"
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -164,17 +171,24 @@ fun MainAdminScreen(navController: NavController) {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Добавить врача") },
-                                onClick = { navController.navigate("add_doctor/$medCenterId") },
+                                text = { Text("Управление аккаунтами") },
+                                onClick = { navController.navigate("edit_accounts_admin") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.AccountCircle, contentDescription = "Добавить врача")
+                                    Icon(Icons.Default.AccountCircle, contentDescription = "Управление аккаунтами")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Модерация отзывов") },
+                                onClick = { navController.navigate("edit_feedback") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Message, contentDescription = "Модерация отзывов")
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("Управление стац лечением") },
-                                onClick = { navController.navigate("stationary_management/$medCenterId") },
+                                onClick = { navController.navigate("stationary_management") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.AccountCircle, contentDescription = "Управление стац лечением")
+                                    Icon(Icons.Default.AddToQueue, contentDescription = "Управление стац лечением")
                                 }
                             )
                             val context = LocalContext.current

@@ -55,6 +55,8 @@ import retrofit2.HttpException
 import java.io.IOException
 import android.content.Context
 import androidx.compose.ui.platform.LocalContext
+import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
+import com.mgkct.diplom.Admin.FeedBackEdit
 import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
 
 
@@ -70,6 +72,8 @@ class LoginActivity : ComponentActivity() {
                 composable("login_screen") { LoginScreen(navController) }
                 composable("edit_accounts") { EditAccountsScreen(navController) }
                 composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
+                composable("edit_feedback") { FeedBackEdit(navController) }
+                composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
                 composable("main_admin") { MainAdminScreen(navController) }
             }
 

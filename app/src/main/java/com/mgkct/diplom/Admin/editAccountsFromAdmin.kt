@@ -1,6 +1,8 @@
-package com.mgkct.diplom.SudoAdmin
+package com.mgkct.diplom.Admin
 
 import MainAdminScreen
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -27,8 +30,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
+import com.mgkct.diplom.*
 import com.mgkct.diplom.ApiService
-import com.mgkct.diplom.LoginScreen
 import com.mgkct.diplom.R
 import com.mgkct.diplom.RetrofitInstance
 import kotlinx.coroutines.Dispatchers
@@ -36,17 +39,17 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.ui.platform.LocalContext
-import com.mgkct.diplom.sendEmail
+import com.mgkct.diplom.SudoAdmin.ConfirmDeleteDialog
+import com.mgkct.diplom.SudoAdmin.UserItem
 import kotlinx.coroutines.delay
 
-class EditAccountsActivity : ComponentActivity() {
+class EditAccountsFromAdminActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val navController = rememberNavController()
-            NavHost(navController = navController, startDestination = "edit_accounts") {
-                composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
+            NavHost(navController = navController, startDestination = "edit_accounts_admin") {
+                composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
                 composable("main_admin") { MainAdminScreen(navController) }
             }
@@ -56,21 +59,28 @@ class EditAccountsActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditAccountsScreen(navController: NavController) {
+fun EditAccountsFromAdminScreen(navController: NavController) {
+    val context = LocalContext.current
+    val sharedPreferences = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+    val currentMedCenterId = sharedPreferences.getInt("medCenterId", -1)
+
     var searchQuery by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<ApiService.User?>(null) }
     var userToEdit by remember { mutableStateOf<ApiService.User?>(null) }
-    var refreshTrigger by remember { mutableStateOf(0) } // Добавляем триггер для обновления
+    var refreshTrigger by remember { mutableStateOf(0) }
     val usersList = remember { mutableStateListOf<ApiService.User>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(refreshTrigger) { // Добавляем refreshTrigger в зависимости
+    LaunchedEffect(refreshTrigger) {
         try {
             val users = RetrofitInstance.api.getUsers()
             usersList.clear()
-            usersList.addAll(users)
+            // Фильтруем пользователей по medCenterId и исключаем админов
+            usersList.addAll(users.filter {
+                it.medCenterId == currentMedCenterId && it.role != "admin"
+            })
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -83,11 +93,12 @@ fun EditAccountsScreen(navController: NavController) {
                 (it.key ?: "").contains(searchQuery, ignoreCase = true)
     }
 
+    // Остальной код остается без изменений
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Управление аккаунтами") },
+                title = { Text("Управление аккаунтами центра") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
@@ -166,6 +177,7 @@ fun EditAccountsScreen(navController: NavController) {
     if (showDialog || userToEdit != null) {
         AddOrEditUserDialog(
             user = userToEdit,
+            currentMedCenterId = currentMedCenterId, // Передаем currentMedCenterId в диалог
             onDismiss = {
                 showDialog = false
                 userToEdit = null
@@ -187,7 +199,7 @@ fun EditAccountsScreen(navController: NavController) {
                             }
                             snackbarHostState.showSnackbar("Информация о пользователе ${user.fullName} обновлена")
                         }
-                        refreshTrigger++ // Обновляем данные после сохранения
+                        refreshTrigger++
                     } catch (e: Exception) {
                         e.printStackTrace()
                         snackbarHostState.showSnackbar("Ошибка при сохранении данных пользователя")
@@ -207,7 +219,7 @@ fun EditAccountsScreen(navController: NavController) {
                         RetrofitInstance.api.deleteUser(it.id)
                         usersList.remove(it)
                         snackbarHostState.showSnackbar("Пользователь ${it.fullName} был удален")
-                        refreshTrigger++ // Обновляем данные после удаления
+                        refreshTrigger++
                     } catch (e: Exception) {
                         e.printStackTrace()
                         snackbarHostState.showSnackbar("Ошибка при удалении пользователя")
@@ -218,32 +230,11 @@ fun EditAccountsScreen(navController: NavController) {
     }
 }
 
-@Composable
-fun ConfirmDeleteDialog(user: ApiService.User, onDismiss: () -> Unit, onConfirmDelete: (ApiService.User) -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Подтверждение удаления") },
-        text = { Text("Вы уверены, что хотите удалить пользователя ${user.fullName}?") },
-        confirmButton = {
-            Button(onClick = {
-                onConfirmDelete(user)
-                onDismiss()
-            }) {
-                Text("Удалить")
-            }
-        },
-        dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Отмена")
-            }
-        }
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddOrEditUserDialog(
     user: ApiService.User?,
+    currentMedCenterId: Int, // Принимаем currentMedCenterId как параметр
     onDismiss: () -> Unit,
     onSaveUser: (ApiService.User) -> Unit
 ) {
@@ -252,9 +243,8 @@ fun AddOrEditUserDialog(
     var email by remember { mutableStateOf(user?.email ?: "") }
     var address by remember { mutableStateOf(user?.address ?: "") }
     var role by remember { mutableStateOf(user?.role ?: "user") }
-    var expanded by remember { mutableStateOf(false) } // Состояние для раскрытия меню
-    val roles = listOf("user", "admin", "doctor", "main-doctor") // Доступные роли
-    var medCenterId by remember { mutableStateOf(user?.medCenterId?.toString() ?: "") }
+    var expanded by remember { mutableStateOf(false) }
+    val roles = listOf("user", "doctor", "main-doctor") // Убираем admin из доступных ролей
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -321,14 +311,6 @@ fun AddOrEditUserDialog(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = medCenterId,
-                    onValueChange = { medCenterId = it },
-                    label = { Text("Айди центра") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         },
         confirmButton = {
@@ -341,8 +323,8 @@ fun AddOrEditUserDialog(
                         email = email,
                         address = address,
                         role = role,
-                        medCenterId = medCenterId.toIntOrNull(),
-                        tgId = user?.tgId // Сохраняем существующий tgId при редактировании
+                        medCenterId = currentMedCenterId, // Используем currentMedCenterId
+                        tgId = user?.tgId
                     )
                     onSaveUser(newUser)
                 }
@@ -358,98 +340,4 @@ fun AddOrEditUserDialog(
     )
 }
 
-@Composable
-fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.User) -> Unit) {
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-    var isSendingEnabled by remember { mutableStateOf(true) } // Флаг для кулдауна
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(4.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("ФИО: ${user.fullName}", style = MaterialTheme.typography.titleMedium)
-                    Text("Ключ: ${"*".repeat(user.key?.length ?: 0)}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Email: ${user.email}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Адрес: ${user.address}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Роль: ${user.role}", style = MaterialTheme.typography.bodyMedium)
-                    Text("ID центра: ${user.medCenterId}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Telegram ID: ${user.tgId}", style = MaterialTheme.typography.bodyMedium)
-                }
-                Column {
-                    IconButton(onClick = { onEdit(user) }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Удалить")
-                    }
-                    IconButton(
-                        onClick = {
-                            if (isSendingEnabled) {
-                                coroutineScope.launch {
-                                    try {
-                                        sendEmail(user.email ?: "Email не найден", user.key ?: "Ключ не найден")
-                                        snackbarHostState.showSnackbar(
-                                            "Письмо успешно отправлено на ${user.email}",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        // Активируем кулдаун
-                                        isSendingEnabled = false
-                                        // Через 7 секунд снова разрешаем отправку
-                                        coroutineScope.launch(Dispatchers.Main) {
-                                            delay(7000)
-                                            isSendingEnabled = true
-                                        }
-                                    } catch (e: Exception) {
-                                        snackbarHostState.showSnackbar(
-                                            "Ошибка при отправке письма: ${e.localizedMessage}",
-                                            duration = SnackbarDuration.Long
-                                        )
-                                    }
-                                }
-                            } else {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        "Подождите 7 секунд перед следующей отправкой",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
-                            }
-                        },
-                        enabled = isSendingEnabled
-                    ) {
-                        Icon(
-                            Icons.Default.Email,
-                            contentDescription = "Отправить",
-                            tint = if (isSendingEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        )
-                    }
-                }
-            }
-            // Добавляем SnackbarHost для этого элемента
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-fun PreviewScreen() {
-    val navController = rememberNavController()
-    EditAccountsScreen(navController)
-}
+// Остальные компоненты (ConfirmDeleteDialog, UserItem) остаются такими же, как в оригинальном коде

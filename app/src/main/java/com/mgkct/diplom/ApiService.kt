@@ -22,6 +22,30 @@ interface ApiService {
     @DELETE("/users/{id}")
     suspend fun deleteUser(@Path("id") id: Int): Response<ResponseBody>
 
+    // В интерфейсе ApiService добавьте:
+    @GET("/feedbacks")
+    suspend fun getFeedbacks(): List<Feedback>
+
+    @POST("/feedbacks/{id}/approve")
+    suspend fun approveFeedback(@Path("id") id: Int)
+
+    @POST("/feedbacks/{id}/reject")
+    suspend fun rejectFeedback(@Path("id") id: Int, @Body reason: RejectReason)
+
+    data class RejectReason(val reason: String)
+
+    // И добавьте модель Feedback:
+    data class Feedback(
+        val id: Int,
+        val userId: Int,
+        val doctorId: Int,
+        val medCenterId: Int,
+        val grade: Int,
+        val description: String,
+        val active: String, // "in_progress", "true", "false"
+        val reason: String? = null
+    )
+
     data class LicenseKeyRequest(val key: String)
 
     data class LoginResponse(
@@ -41,7 +65,7 @@ interface ApiService {
         val email: String?,
         val address: String?,
         val tgId: Int?,
-        val centerName: String? = null
+        val centerName: String? = null,
     )
 }
 
