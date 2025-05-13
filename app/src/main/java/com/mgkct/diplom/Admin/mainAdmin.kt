@@ -58,6 +58,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
 import com.mgkct.diplom.Admin.FeedBackEdit
+import com.mgkct.diplom.Admin.ManageInpatientCareScreen
 import com.mgkct.diplom.LoginActivity
 import com.mgkct.diplom.R
 
@@ -69,6 +70,7 @@ class MainAdminActivity : ComponentActivity() {
             NavHost(navController, startDestination = "main_admin") {
                 composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
                 composable("edit_feedback") { FeedBackEdit(navController) }
+                composable("manage_inp_care") { ManageInpatientCareScreen(navController) }
                 composable("login_screen") {
 
 
@@ -186,7 +188,7 @@ fun MainAdminScreen(navController: NavController) {
                             )
                             DropdownMenuItem(
                                 text = { Text("Управление стац лечением") },
-                                onClick = { navController.navigate("stationary_management") },
+                                onClick = { navController.navigate("manage_inp_care") },
                                 leadingIcon = {
                                     Icon(Icons.Default.AddToQueue, contentDescription = "Управление стац лечением")
                                 }

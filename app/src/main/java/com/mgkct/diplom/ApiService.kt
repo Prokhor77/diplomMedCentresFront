@@ -1,5 +1,6 @@
 package com.mgkct.diplom
 
+import com.google.gson.annotations.SerializedName
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -31,6 +32,55 @@ interface ApiService {
 
     @POST("/feedbacks/{id}/reject")
     suspend fun rejectFeedback(@Path("id") id: Int, @Body reason: RejectReason)
+
+    @GET("inpatient-cares")
+    suspend fun getInpatientCares(
+        @Query("med_center_id") medCenterId: Int,
+        @Query("active") active: String
+    ): List<InpatientCareResponse>
+
+    @POST("inpatient-cares")
+    suspend fun createInpatientCare(
+        @Body care: InpatientCareCreate,
+        @Query("med_center_id") medCenterId: Int
+    ): InpatientCareResponse
+
+    @PATCH("inpatient-cares/{careId}")
+    suspend fun updateInpatientCare(
+        @Path("careId") careId: Int,
+        @Query("active") active: String
+    )
+
+    @GET("users/search")
+    suspend fun searchUsers(
+        @Query("med_center_id") medCenterId: Int,
+        @Query("query") query: String
+    ): List<UserSearchResult>
+
+
+    // Модели данных
+    data class InpatientCareResponse(
+        @SerializedName("id") val id: Int,
+        @SerializedName("userFullName") val userFullName: String,
+        @SerializedName("floor") val floor: Int,
+        @SerializedName("ward") val ward: Int,
+        @SerializedName("receipt_date") val receiptDate: Long?,  // Изменено на Long?
+        @SerializedName("expire_date") val expireDate: Long?,    // Изменено на Long?
+        @SerializedName("active") val active: String
+    )
+
+    data class UserSearchResult(
+        @SerializedName("id") val id: Int,
+        @SerializedName("fullName") val fullName: String
+    )
+
+    data class InpatientCareCreate(
+        @SerializedName("userId") val userId: Int,
+        @SerializedName("floor") val floor: Int,
+        @SerializedName("ward") val ward: Int,
+        @SerializedName("receipt_date") val receipt_date: String,
+        @SerializedName("expire_date") val expire_date: String
+    )
 
     data class RejectReason(val reason: String)
 
