@@ -2,8 +2,6 @@ package com.mgkct.diplom.Admin
 
 import android.content.Context
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -38,22 +35,24 @@ fun ManageInpatientCareScreen(navController: NavController) {
     val medCenterId = sharedPreferences.getInt("medCenterId", -1)
     var patients by remember { mutableStateOf<List<ApiService.InpatientCareResponse>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") } // Добавляем состояние для строки поиска
+    var searchQuery by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Функция для загрузки пациентов
     fun loadPatients() {
         coroutineScope.launch {
-            patients = RetrofitInstance.api.getInpatientCares(medCenterId, "true")
+            try {
+                patients = RetrofitInstance.api.getInpatientCares(medCenterId, "true")
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar("Ошибка загрузки пациентов: ${e.message}")
+            }
         }
     }
 
-    // Загружаем пациентов при первом открытии экрана
     LaunchedEffect(medCenterId) {
         loadPatients()
     }
 
-    // Фильтруем пациентов по поисковому запросу
     val filteredPatients = patients.filter { patient ->
         patient.userFullName?.contains(searchQuery, ignoreCase = true) == true
     }
@@ -73,7 +72,8 @@ fun ManageInpatientCareScreen(navController: NavController) {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, "Добавить пациента")
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -88,7 +88,6 @@ fun ManageInpatientCareScreen(navController: NavController) {
             )
 
             Column(modifier = Modifier.padding(16.dp)) {
-                // Добавляем строку поиска
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -108,7 +107,6 @@ fun ManageInpatientCareScreen(navController: NavController) {
 
                 if (filteredPatients.isEmpty()) {
                     if (searchQuery.isNotEmpty()) {
-                        // Показываем сообщение, если поиск не дал результатов
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -121,7 +119,6 @@ fun ManageInpatientCareScreen(navController: NavController) {
                             )
                         }
                     } else {
-                        // Показываем сообщение, если нет пациентов
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -135,15 +132,19 @@ fun ManageInpatientCareScreen(navController: NavController) {
                         }
                     }
                 } else {
-                    // Отображаем список пациентов
                     LazyColumn {
                         items(filteredPatients) { patient ->
                             InpatientCareCard(
                                 patient = patient,
                                 onDischarge = {
                                     coroutineScope.launch {
-                                        RetrofitInstance.api.updateInpatientCare(patient.id, "false")
-                                        loadPatients() // Перезагружаем список после выписки
+                                        try {
+                                            RetrofitInstance.api.updateInpatientCare(patient.id, "false")
+                                            loadPatients()
+                                            snackbarHostState.showSnackbar("Пациент успешно выписан")
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar("Ошибка при выписке: ${e.message}")
+                                        }
                                     }
                                 }
                             )
@@ -160,17 +161,47 @@ fun ManageInpatientCareScreen(navController: NavController) {
             onDismiss = { showAddDialog = false },
             onSave = { newPatient ->
                 coroutineScope.launch {
-                    RetrofitInstance.api.createInpatientCare(newPatient, medCenterId)
-                    loadPatients() // Перезагружаем список после добавления
+                    try {
+                        // Проверяем, есть ли уже такой пациент на лечении
+                        val existingPatients = RetrofitInstance.api.getInpatientCares(medCenterId, "true")
+                        val isAlreadyInCare = existingPatients.any { it.userId == newPatient.userId }
+
+                        if (isAlreadyInCare) {
+                            snackbarHostState.showSnackbar("Этот пациент уже находится на стационарном лечении")
+                        } else {
+                            RetrofitInstance.api.createInpatientCare(newPatient, medCenterId)
+                            loadPatients()
+                            snackbarHostState.showSnackbar("Пациент успешно добавлен")
+                            showAddDialog = false
+                        }
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Ошибка при добавлении: ${e.message}")
+                    }
                 }
             }
         )
     }
 }
 
-fun Long.toFormattedDate(): String {
-    val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-    return sdf.format(Date(this))
+
+fun String?.toFormattedDate(): String {
+    if (this.isNullOrEmpty()) return "Не указана"
+    return try {
+        // Предполагаем, что дата приходит в формате ISO (например "2023-12-31T00:00:00.000Z")
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        val date = sdf.parse(this)
+        val outputFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        outputFormat.format(date)
+    } catch (e: Exception) {
+        // Если формат не совпадает, пытаемся разобрать как timestamp строку
+        try {
+            val timestamp = this.toLong()
+            val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+            sdf.format(Date(timestamp))
+        } catch (e: NumberFormatException) {
+            "Неверный формат даты"
+        }
+    }
 }
 
 
@@ -182,29 +213,39 @@ fun InpatientCareCard(patient: ApiService.InpatientCareResponse, onDischarge: ()
             .padding(8.dp)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Text(text = ("ФИО: ${patient.userFullName}"), style = MaterialTheme.typography.titleMedium)
+            Text(text = "ФИО: ${patient.userFullName ?: "Не указано"}",
+                style = MaterialTheme.typography.titleMedium)
+
             Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Этаж: ${patient.floor}")
-                    Text("Палата: ${patient.ward}")
-                    patient.receiptDate?.let {
-                        Text("Поступление: ${it.toFormattedDate()}")
-                    }
-                }
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("Этаж: ${patient.floor}")
+                Text("Палата: ${patient.ward}")
+                Text("Поступление: ${patient.receiptDate.toFormattedDate()}")
             }
+
             Spacer(modifier = Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Button(
-                    onClick = onDischarge,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Выписать пациента")
-                }
+
+            Button(
+                onClick = onDischarge,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Выписать пациента")
             }
         }
     }
 }
+
+fun String.toUnixTimestampString(): String {
+    return try {
+        val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        val date = sdf.parse(this)
+        (date?.time?.toString()) ?: "0"
+    } catch (e: Exception) {
+        "0"
+    }
+}
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -222,13 +263,45 @@ fun AddInpatientCareDialog(
     var receiptDate by remember { mutableStateOf("") }
     var expireDate by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    var showDateError by remember { mutableStateOf(false) }
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.length > 2) {
             coroutineScope.launch {
-                users = RetrofitInstance.api.searchUsers(medCenterId, searchQuery)
+                try {
+                    users = RetrofitInstance.api.searchUsers(medCenterId, searchQuery)
+                } catch (e: Exception) {
+                    users = emptyList()
+                }
             }
         }
+    }
+
+    fun validateAndSave() {
+        if (selectedUser == null) {
+            return
+        }
+
+        if (floor.isBlank() || ward.isBlank() || receiptDate.isBlank()) {
+            return
+        }
+
+        // Проверка формата даты
+        if (!isValidDate(receiptDate)) {
+            showDateError = true
+            return
+        }
+
+        showDateError = false
+
+        val newCare = ApiService.InpatientCareCreate(
+            userId = selectedUser?.id ?: 0,
+            floor = floor.toIntOrNull() ?: 0,
+            ward = ward.toIntOrNull() ?: 0,
+            receipt_date = receiptDate.toUnixTimestampString(),
+            expire_date = expireDate
+        )
+        onSave(newCare)
     }
 
     AlertDialog(
@@ -296,37 +369,20 @@ fun AddInpatientCareDialog(
                     value = receiptDate,
                     onValueChange = { receiptDate = it },
                     label = { Text("Дата поступления (ДД.ММ.ГГГГ)") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showDateError,
+                    supportingText = {
+                        if (showDateError) {
+                            Text("Введите дату в формате ДД.ММ.ГГГГ")
+                        }
+                    }
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-                    val receiptTimestamp = try {
-                        dateFormat.parse(receiptDate)?.time
-                    } catch (e: Exception) {
-                        null
-                    }
-
-                    val expireTimestamp = try {
-                        dateFormat.parse(expireDate)?.time
-                    } catch (e: Exception) {
-                        null
-                    }
-
-                    val newCare = ApiService.InpatientCareCreate(
-                        userId = selectedUser?.id ?: 0,
-                        floor = floor.toIntOrNull() ?: 0,
-                        ward = ward.toIntOrNull() ?: 0,
-                        receipt_date = receiptTimestamp?.toString() ?: "",
-                        expire_date = expireTimestamp?.toString() ?: ""
-                    )
-                    onSave(newCare)
-                    onDismiss()
-                },
-                enabled = selectedUser != null
+                onClick = { validateAndSave() },
+                enabled = selectedUser != null && floor.isNotBlank() && ward.isNotBlank() && receiptDate.isNotBlank()
             ) {
                 Text("Сохранить")
             }
@@ -337,4 +393,16 @@ fun AddInpatientCareDialog(
             }
         }
     )
+}
+
+// Функция для проверки формата даты
+fun isValidDate(dateStr: String): Boolean {
+    return try {
+        val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        sdf.isLenient = false
+        sdf.parse(dateStr)
+        true
+    } catch (e: Exception) {
+        false
+    }
 }

@@ -61,11 +61,12 @@ interface ApiService {
     // Модели данных
     data class InpatientCareResponse(
         @SerializedName("id") val id: Int,
-        @SerializedName("userFullName") val userFullName: String,
+        @SerializedName("userFullName") val userFullName: String?,
+        @SerializedName("userId") val userId: Int,
         @SerializedName("floor") val floor: Int,
         @SerializedName("ward") val ward: Int,
-        @SerializedName("receipt_date") val receiptDate: Long?,  // Изменено на Long?
-        @SerializedName("expire_date") val expireDate: Long?,    // Изменено на Long?
+        @SerializedName("receipt_date") val receiptDate: String?,  // Изменено на String
+        @SerializedName("expire_date") val expireDate: String?,    // Изменено на String
         @SerializedName("active") val active: String
     )
 
@@ -75,11 +76,11 @@ interface ApiService {
     )
 
     data class InpatientCareCreate(
-        @SerializedName("userId") val userId: Int,
-        @SerializedName("floor") val floor: Int,
-        @SerializedName("ward") val ward: Int,
-        @SerializedName("receipt_date") val receipt_date: String,
-        @SerializedName("expire_date") val expire_date: String
+        val userId: Int,
+        val floor: Int,
+        val ward: Int,
+        val receipt_date: String, // Изменено на Long для timestamp
+        val expire_date: String // Или можно оставить String если нужно
     )
 
     data class RejectReason(val reason: String)
