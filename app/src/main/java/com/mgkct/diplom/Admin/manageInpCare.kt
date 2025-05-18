@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageInpatientCareScreen(navController: NavController) {
@@ -36,21 +37,16 @@ fun ManageInpatientCareScreen(navController: NavController) {
     var patients by remember { mutableStateOf<List<ApiService.InpatientCareResponse>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var refreshTrigger by remember { mutableStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun loadPatients() {
-        coroutineScope.launch {
-            try {
-                patients = RetrofitInstance.api.getInpatientCares(medCenterId, "true")
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar("Ошибка загрузки пациентов: ${e.message}")
-            }
+    LaunchedEffect(medCenterId, refreshTrigger) {
+        try {
+            patients = RetrofitInstance.api.getInpatientCares(medCenterId, "true")
+        } catch (e: Exception) {
+            snackbarHostState.showSnackbar("Ошибка загрузки пациентов: ${e.message}")
         }
-    }
-
-    LaunchedEffect(medCenterId) {
-        loadPatients()
     }
 
     val filteredPatients = patients.filter { patient ->
@@ -140,7 +136,7 @@ fun ManageInpatientCareScreen(navController: NavController) {
                                     coroutineScope.launch {
                                         try {
                                             RetrofitInstance.api.updateInpatientCare(patient.id, "false")
-                                            loadPatients()
+                                            refreshTrigger++
                                             snackbarHostState.showSnackbar("Пациент успешно выписан")
                                         } catch (e: Exception) {
                                             snackbarHostState.showSnackbar("Ошибка при выписке: ${e.message}")
@@ -148,6 +144,7 @@ fun ManageInpatientCareScreen(navController: NavController) {
                                     }
                                 }
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
@@ -162,7 +159,6 @@ fun ManageInpatientCareScreen(navController: NavController) {
             onSave = { newPatient ->
                 coroutineScope.launch {
                     try {
-                        // Проверяем, есть ли уже такой пациент на лечении
                         val existingPatients = RetrofitInstance.api.getInpatientCares(medCenterId, "true")
                         val isAlreadyInCare = existingPatients.any { it.userId == newPatient.userId }
 
@@ -170,7 +166,7 @@ fun ManageInpatientCareScreen(navController: NavController) {
                             snackbarHostState.showSnackbar("Этот пациент уже находится на стационарном лечении")
                         } else {
                             RetrofitInstance.api.createInpatientCare(newPatient, medCenterId)
-                            loadPatients()
+                            refreshTrigger++
                             snackbarHostState.showSnackbar("Пациент успешно добавлен")
                             showAddDialog = false
                         }
@@ -183,6 +179,39 @@ fun ManageInpatientCareScreen(navController: NavController) {
     }
 }
 
+@Composable
+fun InpatientCareCard(patient: ApiService.InpatientCareResponse, onDischarge: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "ФИО: ${patient.userFullName ?: "Не указано"}",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("Этаж: ${patient.floor}")
+                Text("Палата: ${patient.ward}")
+                Text("Поступление: ${patient.receiptDate.toFormattedDate()}")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = onDischarge,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Выписать пациента")
+            }
+        }
+    }
+}
 
 fun String?.toFormattedDate(): String {
     if (this.isNullOrEmpty()) return "Не указана"
@@ -205,36 +234,6 @@ fun String?.toFormattedDate(): String {
 }
 
 
-@Composable
-fun InpatientCareCard(patient: ApiService.InpatientCareResponse, onDischarge: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Text(text = "ФИО: ${patient.userFullName ?: "Не указано"}",
-                style = MaterialTheme.typography.titleMedium)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text("Этаж: ${patient.floor}")
-                Text("Палата: ${patient.ward}")
-                Text("Поступление: ${patient.receiptDate.toFormattedDate()}")
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Button(
-                onClick = onDischarge,
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text("Выписать пациента")
-            }
-        }
-    }
-}
 
 fun String.toUnixTimestampString(): String {
     return try {

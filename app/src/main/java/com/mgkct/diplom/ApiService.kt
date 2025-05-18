@@ -57,6 +57,58 @@ interface ApiService {
         @Query("query") query: String
     ): List<UserSearchResult>
 
+    @GET("/med-centers")
+    suspend fun getMedicalCenters(): List<MedicalCenter>
+
+    @PUT("/med-centers/{id}")
+    suspend fun updateMedicalCenter(
+        @Path("id") id: Int,
+        @Body center: MedicalCenter
+    ): Response<ResponseBody>
+
+    @POST("/med-centers")
+    suspend fun createMedicalCenter(@Body center: MedicalCenter): MedicalCenter
+
+    @DELETE("/med-centers/{id}")
+    suspend fun deleteMedicalCenter(@Path("id") id: Int): Response<ResponseBody>
+
+    data class MedicalCenter(
+        @SerializedName("idCenter") val id: Int,
+        @SerializedName("centerName") val name: String,
+        @SerializedName("centerDescription") val description: String?,
+        @SerializedName("centerAddress") val address: String,
+        @SerializedName("centerNumber") val phone: String
+    ) {
+        fun toCreateRequest() = MedicalCenterCreate(
+            centerName = name,
+            centerDescription = description,
+            centerAddress = address,
+            centerNumber = phone
+        )
+    }
+
+    data class MedicalCenterCreate(
+        val centerName: String,
+        val centerDescription: String?,
+        val centerAddress: String,
+        val centerNumber: String
+    )
+
+    @GET("/doctor/appointments")
+    suspend fun getDoctorAppointments(
+        @Query("doctorId") doctorId: Int,
+        @Query("date") date: String,
+        @Query("active") active: String?
+    ): List<AppointmentResponse>
+
+    data class AppointmentResponse(
+        @SerializedName("id") val id: Int,
+        @SerializedName("userId") val userId: Int,
+        @SerializedName("fullName") val fullName: String,
+        @SerializedName("time") val time: String,
+        @SerializedName("reason") val reason: String?,
+        @SerializedName("active") val active: String
+    )
 
     // Модели данных
     data class InpatientCareResponse(

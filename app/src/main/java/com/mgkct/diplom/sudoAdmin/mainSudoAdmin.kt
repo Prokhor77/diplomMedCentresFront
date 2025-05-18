@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddBusiness
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
@@ -66,6 +67,7 @@ class MainSudoAdminActivity : ComponentActivity() {
             NavHost(navController = navController, startDestination = "main_sudo_admin") {
                 composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
                 composable("edit_accounts") { EditAccountsScreen(navController) }
+                composable("edit_agencies") { EditAgencyScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
             }
         }
@@ -147,18 +149,18 @@ fun MainSudoAdminScreen(navController: NavController) {
 //                                    Icon(Icons.Default.AddBusiness, contentDescription = "Управление Мед центрами")
 //                                }
 //                            )
-//                            DropdownMenuItem(
-//                                text = { Text("Управление Администраторами") },
-//                                onClick = { navController.navigate("add_adm_sudo") },
-//                                leadingIcon = {
-//                                    Icon(Icons.Default.AddModerator, contentDescription = "Управление администраторами")
-//                                }
-//                            )
                             DropdownMenuItem(
-                                text = { Text("Управление аккаунтами") },
+                                text = { Text("Модерация аккаунтов") },
                                 onClick = { navController.navigate("edit_accounts") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.People, contentDescription = "Управление аккаунтами")
+                                    Icon(Icons.Default.People, contentDescription = "Модерация аккаунтов")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Модерация учреждений") },
+                                onClick = { navController.navigate("edit_agencies") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AddBusiness, contentDescription = "Модерация учреждений")
                                 }
                             )
 //                            DropdownMenuItem(

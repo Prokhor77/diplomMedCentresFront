@@ -59,6 +59,8 @@ import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
 import com.mgkct.diplom.Admin.FeedBackEdit
 import com.mgkct.diplom.Admin.ManageInpatientCareScreen
 import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
+import com.mgkct.diplom.SudoAdmin.EditAgencyScreen
+import com.mgkct.diplom.doctor.MainDoctorScreen
 
 
 class LoginActivity : ComponentActivity() {
@@ -74,9 +76,12 @@ class LoginActivity : ComponentActivity() {
                 composable("edit_accounts") { EditAccountsScreen(navController) }
                 composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
                 composable("edit_feedback") { FeedBackEdit(navController) }
+                composable("doctor") {MainDoctorScreen(navController = navController)}
+                composable("edit_agencies") { EditAgencyScreen(navController) }
                 composable("manage_inp_care") { ManageInpatientCareScreen(navController) }
                 composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
                 composable("main_admin") { MainAdminScreen(navController) }
+                composable("doctor_screen") { MainDoctorScreen(navController) }
             }
 
         }
@@ -208,6 +213,7 @@ fun LoginScreen(navController: NavController) {
                                     when (response.role) {
                                         "sudo-admin" -> navController.navigate("main_sudo_admin")
                                         "admin" -> navController.navigate("main_admin")
+                                        "doctor" -> navController.navigate("doctor")
                                         else -> errorMessage = "Неизвестная роль: ${response.role}"
                                     }
                                 } catch (e: HttpException) {
