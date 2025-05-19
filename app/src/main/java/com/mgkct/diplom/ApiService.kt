@@ -111,6 +111,15 @@ interface ApiService {
         @SerializedName("active") val active: String
     )
 
+    @POST("/appointments")
+    suspend fun createAppointment(
+        @Query("doctorId") doctorId: Int,
+        @Query("userId") userId: Int,
+        @Query("date") date: String,
+        @Query("time") time: String,
+        @Query("reason") reason: String?
+    ): Response<Unit>
+
     // Модели данных
     data class InpatientCareResponse(
         @SerializedName("id") val id: Int,
