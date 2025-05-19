@@ -21,9 +21,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -55,12 +59,16 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.mgkct.diplom.ApiService
 import com.mgkct.diplom.LoginActivity
 import com.mgkct.diplom.LoginScreen
 import com.mgkct.diplom.R
 import com.mgkct.diplom.RetrofitInstance
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -91,47 +99,79 @@ fun MainDoctorScreen(navController: NavController) {
     val doctorId = sharedPref.getInt("userId", 0)
     val medCenterId = sharedPref.getInt("medCenterId", 0)
 
-    // Форматируем сегодняшнюю дату
     val today = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(Date())
 
-    // Состояния для данных
     var pendingCount by remember { mutableStateOf(0) }
     var completedCount by remember { mutableStateOf(0) }
-    var appointments by remember { mutableStateOf<List<ApiService.AppointmentResponse>>(emptyList()) }
+    var allAppointments by remember { mutableStateOf<List<ApiService.AppointmentResponse>>(emptyList()) }
+    var filteredAppointments by remember { mutableStateOf<List<ApiService.AppointmentResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    // Загрузка данных
-    LaunchedEffect(Unit) {
-        try {
-            // Загружаем ожидающих приема
-            val pendingResponse = RetrofitInstance.api.getDoctorAppointments(
-                doctorId = doctorId,
-                date = today,
-                active = "true"
-            )
-            pendingCount = pendingResponse.size
+    // Функция для загрузки данных
+    fun loadData() {
+        isRefreshing = true
+        error = null
 
-            // Загружаем завершенные приемы
-            val completedResponse = RetrofitInstance.api.getDoctorAppointments(
-                doctorId = doctorId,
-                date = today,
-                active = "false"
-            )
-            completedCount = completedResponse.size
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val pendingResponse = RetrofitInstance.api.getDoctorAppointments(
+                    doctorId = doctorId,
+                    date = today,
+                    active = "true"
+                )
+                val completedResponse = RetrofitInstance.api.getDoctorAppointments(
+                    doctorId = doctorId,
+                    date = today,
+                    active = "false"
+                )
+                val appsResponse = RetrofitInstance.api.getDoctorAppointments(
+                    doctorId = doctorId,
+                    date = today,
+                    active = null
+                )
 
-            // Загружаем список приемов на сегодня
-            appointments = RetrofitInstance.api.getDoctorAppointments(
-                doctorId = doctorId,
-                date = today,
-                active = null
-            ).filter { it.active == "true" } // Только активные (ожидающие)
-
-            isLoading = false
-        } catch (e: Exception) {
-            error = e.message
-            isLoading = false
+                withContext(Dispatchers.Main) {
+                    pendingCount = pendingResponse.size
+                    completedCount = completedResponse.size
+                    allAppointments = appsResponse.filter { it.active == "true" }
+                    filteredAppointments = allAppointments
+                    isLoading = false
+                    isRefreshing = false
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    error = e.message
+                    isLoading = false
+                    isRefreshing = false
+                }
+            }
         }
+    }
+
+    // Функция для фильтрации записей
+    fun filterAppointments(query: String) {
+        filteredAppointments = if (query.isEmpty()) {
+            allAppointments
+        } else {
+            allAppointments.filter { appointment ->
+                appointment.fullName.contains(query, ignoreCase = true) ||
+                        appointment.reason?.contains(query, ignoreCase = true) ?: false ||
+                        appointment.time.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    // Первоначальная загрузка данных
+    LaunchedEffect(Unit) {
+        loadData()
+    }
+
+    // При изменении поискового запроса фильтруем записи
+    LaunchedEffect(searchQuery) {
+        filterAppointments(searchQuery)
     }
 
     var expandedMenu by remember { mutableStateOf(false) }
@@ -175,7 +215,7 @@ fun MainDoctorScreen(navController: NavController) {
                             )
                             DropdownMenuItem(
                                 text = { Text("Профиль") },
-                                onClick = { /* TODO: Добавить переход к профилю */ },
+                                onClick = { /* TODO */ },
                                 leadingIcon = {
                                     Icon(Icons.Default.AccountCircle, contentDescription = "Профиль")
                                 }
@@ -187,9 +227,7 @@ fun MainDoctorScreen(navController: NavController) {
                                         clear()
                                         apply()
                                     }
-                                    navController.navigate("login_screen") {
-                                        popUpTo(0)
-                                    }
+                                    navController.navigate("login_screen") { popUpTo(0) }
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.ExitToApp, contentDescription = "Выход")
@@ -201,64 +239,114 @@ fun MainDoctorScreen(navController: NavController) {
             },
             containerColor = Color.Transparent
         ) { paddingValues ->
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (error != null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Ошибка: $error", color = Color.Red)
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                ) {
-                    // Статистика пациентов
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        PatientStatsCard(
-                            title = "Ожидают приема",
-                            count = pendingCount,
-                            color = Color(0xFFFFA726),
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        PatientStatsCard(
-                            title = "Принято сегодня",
-                            count = completedCount,
-                            color = Color(0xFF66BB6A),
-                            modifier = Modifier.weight(1f)
-                        )
+            SwipeRefresh(
+                state = rememberSwipeRefreshState(isRefreshing = isRefreshing),
+                onRefresh = { loadData() },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (isLoading && !isRefreshing) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "Записи на прием:",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        ),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
+                } else if (error != null) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Ошибка: $error", color = Color.Red)
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
                     ) {
-                        items(appointments) { appointment ->
-                            AppointmentCard(
-                                patientName = appointment.fullName,
-                                time = appointment.time,
-                                reason = appointment.reason ?: "Не указана"
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            PatientStatsCard(
+                                title = "Ожидают приема",
+                                count = pendingCount,
+                                color = Color(0xFFFFA726),
+                                modifier = Modifier.weight(1f)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            PatientStatsCard(
+                                title = "Принято сегодня",
+                                count = completedCount,
+                                color = Color(0xFF66BB6A),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Записи на прием:",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            ),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        // Добавленная строка поиска
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            label = { Text("Поиск пациентов") },
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Очистить")
+                                    }
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+
+                        if (filteredAppointments.isEmpty()) {
+                            if (searchQuery.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "Ничего не найдено",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "Нет записей на сегодня",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(filteredAppointments) { appointment ->
+                                    AppointmentCard(
+                                        patientName = appointment.fullName,
+                                        time = appointment.time,
+                                        reason = appointment.reason ?: "Не указана"
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -303,7 +391,7 @@ fun AppointmentCard(patientName: String, time: String, reason: String) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = patientName,
+                text = "ФИО: $patientName",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold
                 )
@@ -331,6 +419,23 @@ fun AppointmentCard(patientName: String, time: String, reason: String) {
                     text = reason,
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
+
+            // Добавленная кнопка "Начать прием"
+            Spacer(modifier = Modifier.height(0.dp))
+            Button(
+                onClick = {
+                    // Здесь будет логика начала приема
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Начать прием")
             }
         }
     }

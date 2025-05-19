@@ -54,6 +54,7 @@ android {
 }
 
 dependencies {
+    implementation ("com.google.accompanist:accompanist-swiperefresh:0.27.0")
     implementation ("com.sun.mail:android-mail:1.6.7")
     implementation ("com.sun.mail:android-activation:1.6.7")
     implementation ("androidx.security:security-crypto:1.1.0-alpha03")

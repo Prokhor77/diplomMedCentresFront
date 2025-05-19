@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" />
 
 
     <application
@@ -31,7 +33,6 @@
 
         <activity android:name=".SudoAdmin.MainSudoAdminActivity" />
         <activity android:name=".SudoAdmin.EditAccountsActivity" />
-        <activity android:name=".Admin.MainAdminActivity" />
     </application>
 
 </manifest>
