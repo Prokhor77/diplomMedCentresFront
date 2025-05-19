@@ -1,6 +1,7 @@
 package com.mgkct.diplom
 
 import com.google.gson.annotations.SerializedName
+import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -169,6 +170,35 @@ interface ApiService {
         val address: String?,
         val tgId: Int?,
         val centerName: String? = null,
+    )
+    @POST("records")
+    suspend fun createRecord(@Body record: RecordCreate): Response<Unit>
+
+    @PATCH("appointments/{id}")
+        suspend fun updateAppointmentStatus(
+            @Path("id") id: Int,
+            @Query("active") active: String,
+            @Query("clear_data") clearData: Boolean = false
+        ): Response<Unit>
+
+
+    @Multipart
+    @POST("records/upload-photos")
+    suspend fun uploadPhotos(@Part files: List<MultipartBody.Part>): Response<UploadPhotosResponse>
+
+    data class UploadPhotosResponse(val paths: List<String>)
+
+    data class RecordCreate(
+        @SerializedName("userId") val userId: Int,
+        @SerializedName("doctorId") val doctorId: Int,
+        @SerializedName("description") val description: String,
+        @SerializedName("assignment") val assignment: String,
+        @SerializedName("paidOrFree") val paidOrFree: String,
+        @SerializedName("price") val price: Int?,
+        @SerializedName("time_start") val timeStart: String,
+        @SerializedName("time_end") val timeEnd: String,
+        @SerializedName("medCenterId") val medCenterId: Int,
+        @SerializedName("photos") val photoPaths: List<String> = emptyList()
     )
 }
 

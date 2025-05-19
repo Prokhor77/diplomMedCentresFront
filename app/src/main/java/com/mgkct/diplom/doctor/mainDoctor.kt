@@ -1,9 +1,14 @@
 package com.mgkct.diplom.doctor
 
 import android.content.Context
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,13 +23,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,7 +51,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,17 +63,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberImagePainter
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.mgkct.diplom.ApiService
@@ -70,6 +88,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -134,9 +158,18 @@ fun MainDoctorScreen(navController: NavController) {
                 )
 
                 withContext(Dispatchers.Main) {
-                    pendingCount = pendingResponse.size
-                    completedCount = completedResponse.size
-                    allAppointments = appsResponse.filter { it.active == "true" }
+                    pendingCount = pendingResponse
+                        .filter { it.userId != null && it.userId > 0 } // Добавляем фильтрацию здесь
+                        .size
+
+                    completedCount = completedResponse
+                        .filter { it.userId != null && it.userId > 0 } // Добавляем фильтрацию по userId
+                        .size
+                    allAppointments = appsResponse.filter {
+                        it.active == "true" &&
+                                it.userId != null &&
+                                it.userId > 0 // И здесь добавляем фильтрацию
+                    }
                     filteredAppointments = allAppointments
                     isLoading = false
                     isRefreshing = false
@@ -214,10 +247,10 @@ fun MainDoctorScreen(navController: NavController) {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Профиль") },
+                                text = { Text("Электронная картотека") },
                                 onClick = { /* TODO */ },
                                 leadingIcon = {
-                                    Icon(Icons.Default.AccountCircle, contentDescription = "Профиль")
+                                    Icon(Icons.Default.Book, contentDescription = "Профиль")
                                 }
                             )
                             DropdownMenuItem(
@@ -283,7 +316,7 @@ fun MainDoctorScreen(navController: NavController) {
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = "Записи на прием:",
+                            text = "Записи на прием сегодня:",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp
@@ -340,9 +373,14 @@ fun MainDoctorScreen(navController: NavController) {
                             ) {
                                 items(filteredAppointments) { appointment ->
                                     AppointmentCard(
-                                        patientName = appointment.fullName,
-                                        time = appointment.time,
-                                        reason = appointment.reason ?: "Не указана"
+                                        appointment = appointment,
+                                        context = context,
+                                        onDelete = {
+                                            // Обновляем локальное состояние после удаления
+                                            allAppointments = allAppointments.filter { it.id != appointment.id }
+                                            filteredAppointments = filteredAppointments.filter { it.id != appointment.id }
+                                            pendingCount--
+                                        }
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
@@ -382,16 +420,279 @@ fun PatientStatsCard(title: String, count: Int, color: Color, modifier: Modifier
     }
 }
 
+@Composable
+fun AppointmentDialog(
+    patientName: String,
+    patientId: Int,
+    startTime: String,
+    onDismiss: () -> Unit,
+    onComplete: (ApiService.RecordCreate, List<Uri>) -> Unit
+) {
+    var description by remember { mutableStateOf("") }
+    var assignment by remember { mutableStateOf("") }
+    var isPaid by remember { mutableStateOf(false) }
+    var price by remember { mutableStateOf<Int?>(null) }
+    var imageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    val context = LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        imageUris = uris
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Прием пациента: $patientName") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Описание приема") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = assignment,
+                    onValueChange = { assignment = it },
+                    label = { Text("Назначения") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Text("Платный прием", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = isPaid,
+                        onCheckedChange = { isPaid = it }
+                    )
+                }
+
+                if (isPaid) {
+                    OutlinedTextField(
+                        value = price?.toString() ?: "",
+                        onValueChange = { price = it.toIntOrNull() },
+                        label = { Text("Цена") },
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Button(
+                        onClick = { launcher.launch("image/*") },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Добавить фото")
+                        Spacer(Modifier.width(4.dp))
+                        Text("Добавить фото (${imageUris.size})")
+                    }
+                }
+
+                // Показать превью выбранных фото
+                LazyRow {
+                    items(imageUris) { uri ->
+                        Image(
+                            painter = rememberImagePainter(uri),
+                            contentDescription = "Фото",
+                            modifier = Modifier
+                                .size(64.dp)
+                                .padding(4.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val record = ApiService.RecordCreate(
+                        userId = patientId,
+                        doctorId = getUserIdFromPrefs(context),
+                        description = description,
+                        assignment = assignment,
+                        paidOrFree = if (isPaid) "payed" else "free",
+                        price = price,
+                        timeStart = startTime,
+                        timeEnd = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                            .format(Date()),
+                        medCenterId = getMedCenterIdFromPrefs(context),
+                        photoPaths = emptyList() // Будет заполнено после загрузки
+                    )
+                    onComplete(record, imageUris)
+                }
+            ) {
+                Text("Завершить прием")
+            }
+        }
+    )
+}
+
+// Функции для получения данных из SharedPreferences
+fun getUserIdFromPrefs(context: Context): Int {
+    val prefs = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+    return prefs.getInt("userId", 0)
+}
+
+fun getMedCenterIdFromPrefs(context: Context): Int {
+    val prefs = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+    return prefs.getInt("medCenterId", 0)
+}
 
 @Composable
-fun AppointmentCard(patientName: String, time: String, reason: String) {
+fun AppointmentCard(
+    appointment: ApiService.AppointmentResponse,
+    context: Context,
+    onDelete: () -> Unit // Добавляем callback для удаления
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) } // Для подтверждения удаления
+
+    if (showDialog) {
+        AppointmentDialog(
+            patientName = appointment.fullName,
+            patientId = appointment.userId,
+            startTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                .format(Date()),
+            onDismiss = { showDialog = false },
+            onComplete = { record, imageUris ->
+                isLoading = true
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        // Загружаем фото
+                        val photoPaths = mutableListOf<String>()
+                        for (uri in imageUris) {
+                            try {
+                                val inputStream = context.contentResolver.openInputStream(uri)
+                                val file = File.createTempFile("upload", ".jpg", context.cacheDir)
+                                inputStream?.use { input ->
+                                    file.outputStream().use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                                val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                                val part = MultipartBody.Part.createFormData("files", file.name, requestFile)
+
+                                // Отправляем все фото одним запросом
+                                val response = RetrofitInstance.api.uploadPhotos(listOf(part))
+                                if (response.isSuccessful) {
+                                    photoPaths.addAll(response.body()?.paths ?: emptyList())
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PhotoUpload", "Error uploading photo", e)
+                            }
+                        }
+
+                        // Обновляем запись с путями к фото
+                        val updatedRecord = record.copy(photoPaths = photoPaths)
+
+                        // Отправка данных о приеме
+                        RetrofitInstance.api.createRecord(updatedRecord)
+
+                        // Обновление статуса приема
+                        RetrofitInstance.api.updateAppointmentStatus(
+                            appointment.id,
+                            "false"
+                        )
+
+                        withContext(Dispatchers.Main) {
+                            isLoading = false
+                            showDialog = false
+                            Toast.makeText(context, "Прием успешно завершен", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            isLoading = false
+                            Log.e("AppointmentDialog", "Ошибка при отправке данных: ${e.message}")
+                            Toast.makeText(context, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Подтверждение удаления") },
+            text = { Text("Вы уверены, что хотите удалить запись пациента ${appointment.fullName}?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        isLoading = true
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                // Вызываем API для обновления записи с очисткой данных
+                                RetrofitInstance.api.updateAppointmentStatus(
+                                    appointment.id,
+                                    "false",
+                                    clearData = true
+                                )
+
+                                // После успешного удаления вызываем callback
+                                withContext(Dispatchers.Main) {
+                                    isLoading = false
+                                    onDelete()
+                                    Toast.makeText(context, "Запись удалена", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    isLoading = false
+                                    Toast.makeText(context, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showDeleteConfirm = false }
+                ) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "ФИО: $patientName",
+                text = "ФИО: ${appointment.fullName}",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold
                 )
@@ -404,7 +705,7 @@ fun AppointmentCard(patientName: String, time: String, reason: String) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = time,
+                    text = appointment.time,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -416,26 +717,43 @@ fun AppointmentCard(patientName: String, time: String, reason: String) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = reason,
+                    text = appointment.reason ?: "Не указана",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
 
-            // Добавленная кнопка "Начать прием"
-            Spacer(modifier = Modifier.height(0.dp))
-            Button(
-                onClick = {
-                    // Здесь будет логика начала приема
-                },
+            // Модифицируем кнопки - теперь они в Row
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 2.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
-                )
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Начать прием")
+                // Кнопка "Начать прием"
+                Button(
+                    onClick = { showDialog = true },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Начать прием")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Кнопка "Удалить запись"
+                Button(
+                    onClick = { showDeleteConfirm = true },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF800000),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Удалить запись")
+                }
             }
         }
     }
