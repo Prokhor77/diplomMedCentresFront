@@ -61,6 +61,8 @@ import com.mgkct.diplom.Admin.ManageInpatientCareScreen
 import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
 import com.mgkct.diplom.SudoAdmin.EditAgencyScreen
 import com.mgkct.diplom.doctor.MainDoctorScreen
+import com.mgkct.diplom.doctor.ManageTalonsScreen
+import com.mgkct.diplom.doctor.SearchEMCScreen
 
 
 class LoginActivity : ComponentActivity() {
@@ -81,6 +83,8 @@ class LoginActivity : ComponentActivity() {
                 composable("manage_inp_care") { ManageInpatientCareScreen(navController) }
                 composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
                 composable("main_admin") { MainAdminScreen(navController) }
+                composable("manageTalons") { ManageTalonsScreen(navController) }
+                composable("emc_search") {  SearchEMCScreen(navController = navController) }
                 composable("doctor_screen") { MainDoctorScreen(navController) }
             }
 

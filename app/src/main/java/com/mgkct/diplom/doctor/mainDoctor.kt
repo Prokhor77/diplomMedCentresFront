@@ -33,9 +33,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
@@ -116,6 +118,10 @@ class MainDoctorActivity : ComponentActivity() {
                 composable("doctor") {
                     MainDoctorScreen(navController = navController)
                 }
+                composable("emc_search") {  // Add this new route
+                    SearchEMCScreen(navController = navController)
+                }
+                composable("manageTalons") { ManageTalonsScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
             }
         }
@@ -269,9 +275,23 @@ fun MainDoctorScreen(navController: NavController) {
                             )
                             DropdownMenuItem(
                                 text = { Text("Электронная картотека") },
-                                onClick = { /* TODO */ },
+                                onClick = { navController.navigate("emc_search") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.Book, contentDescription = "Профиль")
+                                    Icon(Icons.Default.Book, contentDescription = "Картотека")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Стационарное лечение") },
+                                onClick = { navController.navigate("") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AddToQueue, contentDescription = "Стац лечение")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Выдача талона") },
+                                onClick = { navController.navigate("manageTalons") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, contentDescription = "Выдача талона")
                                 }
                             )
                             DropdownMenuItem(

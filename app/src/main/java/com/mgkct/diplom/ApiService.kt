@@ -134,7 +134,34 @@ interface ApiService {
 
     data class UserSearchResult(
         @SerializedName("id") val id: Int,
-        @SerializedName("fullName") val fullName: String
+        @SerializedName("fullName") val fullName: String,
+        @SerializedName("role") val role: String
+    )
+
+    @GET("records/patient/{user_id}")
+    suspend fun getPatientRecords(
+        @Path("user_id") userId: Int
+    ): List<RecordResponse>
+
+    data class RecordPhotoResponse(
+        val id: Int,
+        val photo_path: String
+    )
+
+    data class RecordResponse(
+        val id: Int,
+        val userId: Int,
+        val doctorId: Int,
+        val doctorFullName: String?,   // новое поле
+        val doctorWorkType: String?,
+        val description: String?,
+        val assignment: String?,
+        val paidOrFree: String,
+        val price: Int?,
+        val time_start: String,
+        val time_end: String?,
+        val medCenterId: Int,
+        val photos: List<RecordPhotoResponse>
     )
 
     data class InpatientCareCreate(
@@ -144,6 +171,33 @@ interface ApiService {
         val receipt_date: String, // Изменено на Long для timestamp
         val expire_date: String // Или можно оставить String если нужно
     )
+
+    @GET("/doctors/{doctor_id}/free-slots")
+    suspend fun getDoctorFreeSlots(@Path("doctor_id") doctorId: Int): List<FreeSlot>
+
+    data class FreeSlot(
+        val id: Int,
+        val date: String,
+        val time: String,
+        val reason: String?
+    )
+
+    // В ApiService:
+    @GET("/doctors/{doctor_id}/info")
+    suspend fun getDoctorInfo(@Path("doctor_id") doctorId: Int): DoctorInfo
+
+    data class DoctorInfo(
+        @SerializedName("work_type") val workType: String?,
+        @SerializedName("category") val category: String?
+    )
+
+    @PATCH("appointments/{id}")
+    suspend fun updateAppointmentStatus(
+        @Path("id") id: Int,
+        @Query("active") active: String,
+        @Query("userId") userId: Int,
+        @Query("reason") reason: String? = null
+    ): Response<Unit>
 
     data class RejectReason(val reason: String)
 
@@ -184,11 +238,11 @@ interface ApiService {
     suspend fun createRecord(@Body record: RecordCreate): Response<Unit>
 
     @PATCH("appointments/{id}")
-        suspend fun updateAppointmentStatus(
-            @Path("id") id: Int,
-            @Query("active") active: String,
-            @Query("clear_data") clearData: Boolean = false
-        ): Response<Unit>
+    suspend fun updateAppointmentStatus(
+        @Path("id") id: Int,
+        @Query("active") active: String,
+        @Query("clear_data") clearData: Boolean = false
+    ): Response<Unit>
 
 
     @Multipart
@@ -212,7 +266,7 @@ interface ApiService {
 }
 
 object RetrofitInstance {
-    private const val BASE_URL = "http://10.0.2.2:8080"
+    const val BASE_URL = "http://10.0.2.2:8080"
 
     val api: ApiService by lazy {
         Retrofit.Builder()
