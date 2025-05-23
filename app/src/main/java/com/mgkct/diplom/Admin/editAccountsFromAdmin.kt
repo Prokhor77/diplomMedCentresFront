@@ -10,7 +10,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -72,6 +74,7 @@ fun EditAccountsFromAdminScreen(navController: NavController) {
     val usersList = remember { mutableStateListOf<ApiService.User>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
 
     LaunchedEffect(refreshTrigger) {
         try {
@@ -234,110 +237,167 @@ fun EditAccountsFromAdminScreen(navController: NavController) {
 @Composable
 fun AddOrEditUserDialog(
     user: ApiService.User?,
-    currentMedCenterId: Int, // Принимаем currentMedCenterId как параметр
+    currentMedCenterId: Int,
     onDismiss: () -> Unit,
     onSaveUser: (ApiService.User) -> Unit
 ) {
-    var key by remember { mutableStateOf(user?.key ?: "") }
-    var fullName by remember { mutableStateOf(user?.fullName ?: "") }
-    var email by remember { mutableStateOf(user?.email ?: "") }
-    var address by remember { mutableStateOf(user?.address ?: "") }
-    var role by remember { mutableStateOf(user?.role ?: "user") }
+    var key by remember { mutableStateOf("") }
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("user") }
     var expanded by remember { mutableStateOf(false) }
-    val roles = listOf("user", "doctor", "main-doctor") // Убираем admin из доступных ролей
+    val roles = listOf("user", "doctor")
+    var workType by remember { mutableStateOf("") }
+    var experience by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (user == null) "Добавить пользователя" else "Редактировать пользователя") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = key,
-                    onValueChange = { key = it },
-                    label = { Text("Ключ лицензии") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = { Text("ФИО") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("Адрес") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it },
-                    modifier = Modifier.fillMaxWidth()
+    // Сброс значений при открытии диалога для нового пользователя или редактирования
+    LaunchedEffect(user) {
+        key = user?.key ?: ""
+        fullName = user?.fullName ?: ""
+        email = user?.email ?: ""
+        address = user?.address ?: ""
+        role = user?.role ?: "user"
+        workType = user?.work_type ?: ""
+        experience = user?.experience ?: ""
+        category = user?.category ?: ""
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .padding(8.dp)
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(if (user == null) "Добавить пользователя" else "Редактировать пользователя") },
+            text = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 500.dp)
                 ) {
-                    OutlinedTextField(
-                        modifier = Modifier.menuAnchor(),
-                        readOnly = true,
-                        value = role,
-                        onValueChange = {},
-                        label = { Text("Роль") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        }
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                    Column(
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .fillMaxWidth()
                     ) {
-                        roles.forEach { roleOption ->
-                            DropdownMenuItem(
-                                text = { Text(roleOption) },
-                                onClick = {
-                                    role = roleOption
-                                    expanded = false
+                        OutlinedTextField(
+                            value = key,
+                            onValueChange = { key = it },
+                            label = { Text("Ключ лицензии") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = fullName,
+                            onValueChange = { fullName = it },
+                            label = { Text("ФИО") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Email") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = address,
+                            onValueChange = { address = it },
+                            label = { Text("Адрес") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = it },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                modifier = Modifier.menuAnchor(),
+                                readOnly = true,
+                                value = role,
+                                onValueChange = {},
+                                label = { Text("Роль") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                                 }
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                roles.forEach { roleOption ->
+                                    DropdownMenuItem(
+                                        text = { Text(roleOption) },
+                                        onClick = {
+                                            role = roleOption
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        if (role == "doctor") {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = workType,
+                                onValueChange = { workType = it },
+                                label = { Text("Профилизация") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = experience,
+                                onValueChange = { experience = it },
+                                label = { Text("Опыт работы") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = category,
+                                onValueChange = { category = it },
+                                label = { Text("Категория") },
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val newUser = ApiService.User(
-                        id = user?.id ?: 0,
-                        key = key,
-                        fullName = fullName,
-                        email = email,
-                        address = address,
-                        role = role,
-                        medCenterId = currentMedCenterId, // Используем currentMedCenterId
-                        tgId = user?.tgId
-                    )
-                    onSaveUser(newUser)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newUser = ApiService.User(
+                            id = user?.id ?: 0,
+                            key = key,
+                            fullName = fullName,
+                            email = email,
+                            address = address,
+                            role = role,
+                            medCenterId = currentMedCenterId,
+                            tgId = user?.tgId,
+                            work_type = if (role == "doctor") workType else null,
+                            experience = if (role == "doctor") experience else null,
+                            category = if (role == "doctor") category else null
+                        )
+                        onSaveUser(newUser)
+                    }
+                ) {
+                    Text("Сохранить")
                 }
-            ) {
-                Text("Сохранить")
+            },
+            dismissButton = {
+                Button(onClick = onDismiss) {
+                    Text("Отмена")
+                }
             }
-        },
-        dismissButton = {
-            Button(onClick = onDismiss) {
-                Text("Отмена")
-            }
-        }
-    )
+        )
+    }
 }
 
 // Остальные компоненты (ConfirmDeleteDialog, UserItem) остаются такими же, как в оригинальном коде

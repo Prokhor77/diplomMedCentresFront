@@ -233,6 +233,9 @@ interface ApiService {
         val address: String?,
         val tgId: Int?,
         val centerName: String? = null,
+        val work_type: String? = null,
+        val experience: String? = null,
+        val category: String? = null
     )
     @POST("records")
     suspend fun createRecord(@Body record: RecordCreate): Response<Unit>

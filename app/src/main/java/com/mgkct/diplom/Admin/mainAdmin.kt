@@ -193,6 +193,13 @@ fun MainAdminScreen(navController: NavController) {
                                     Icon(Icons.Default.AddToQueue, contentDescription = "Управление стац лечением")
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("Управление рабочим временем") },
+                                onClick = { navController.navigate("") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AddToQueue, contentDescription = "Управление рабочим временем")
+                                }
+                            )
                             val context = LocalContext.current
 
                             DropdownMenuItem(
