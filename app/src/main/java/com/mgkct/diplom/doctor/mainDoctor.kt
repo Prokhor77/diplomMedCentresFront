@@ -122,6 +122,7 @@ class MainDoctorActivity : ComponentActivity() {
                     SearchEMCScreen(navController = navController)
                 }
                 composable("manageTalons") { ManageTalonsScreen(navController) }
+                composable("manageInpCareFromDoc") { ManageInpCareFromDocScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
             }
         }
@@ -282,7 +283,7 @@ fun MainDoctorScreen(navController: NavController) {
                             )
                             DropdownMenuItem(
                                 text = { Text("Стационарное лечение") },
-                                onClick = { navController.navigate("") },
+                                onClick = { navController.navigate("manageInpCareFromDoc") },
                                 leadingIcon = {
                                     Icon(Icons.Default.AddToQueue, contentDescription = "Стац лечение")
                                 }

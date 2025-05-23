@@ -1,0 +1,14 @@
+@startuml
+class MainAdminActivity {
++ void onCreate(Bundle?)
+}
+
+class com.mgkct.diplom.Admin.EditAccountsFromAdminActivity {
++ void onCreate(Bundle?)
+}
+
+
+
+androidx.activity.ComponentActivity <|-- MainAdminActivity
+androidx.activity.ComponentActivity <|-- com.mgkct.diplom.Admin.EditAccountsFromAdminActivity
+@enduml

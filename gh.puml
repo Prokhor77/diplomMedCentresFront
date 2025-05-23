@@ -1,0 +1,136 @@
+@startuml
+left to right direction
+class com.mgkct.diplom.MainActivity {
++ void onCreate(Bundle?)
+}
+
+class MainAdminActivity {
++ void onCreate(Bundle?)
+}
+
+class com.mgkct.diplom.doctor.MainDoctorActivity {
++ void onCreate(Bundle?)
+}
+
+class com.mgkct.diplom.SudoAdmin.EditAccountsActivity {
++ void onCreate(Bundle?)
+}
+
+class com.mgkct.diplom.SudoAdmin.MainSudoAdminActivity {
++ void onCreate(Bundle?)
+}
+
+class com.mgkct.diplom.LoginActivity$Companion {
++  PREFS_NAME
+}
+
+class com.mgkct.diplom.LoginActivity {
++ void onCreate(Bundle?)
+}
+
+class com.mgkct.diplom.null {
++ PasswordAuthentication getPasswordAuthentication()
+}
+
+class com.mgkct.diplom.Admin.EditAccountsFromAdminActivity {
++ void onCreate(Bundle?)
+}
+
+class com.mgkct.diplom.ApiService$MedicalCenter {
++ void toCreateRequest()
+}
+
+class com.mgkct.diplom.ApiService$MedicalCenterCreate {
+}
+class com.mgkct.diplom.ApiService$AppointmentResponse {
+}
+class com.mgkct.diplom.ApiService$InpatientCareResponse {
+}
+class com.mgkct.diplom.ApiService$UserSearchResult {
+}
+class com.mgkct.diplom.ApiService$RecordPhotoResponse {
+}
+class com.mgkct.diplom.ApiService$RecordResponse {
+}
+class com.mgkct.diplom.ApiService$InpatientCareCreate {
+}
+class com.mgkct.diplom.ApiService$FreeSlot {
+}
+class com.mgkct.diplom.ApiService$DoctorInfo {
+}
+class com.mgkct.diplom.ApiService$RejectReason {
+}
+class com.mgkct.diplom.ApiService$Feedback {
+}
+class com.mgkct.diplom.ApiService$LicenseKeyRequest {
+}
+class com.mgkct.diplom.ApiService$LoginResponse {
+}
+class com.mgkct.diplom.ApiService$User {
+}
+class com.mgkct.diplom.ApiService$UploadPhotosResponse {
+}
+class com.mgkct.diplom.ApiService$RecordCreate {
+}
+interface com.mgkct.diplom.ApiService {
++ LoginResponse loginWithKey(LicenseKeyRequest)
++ List<User> getUsers()
++ User addUser(User)
++ User updateUser(Int,User)
++ Response<ResponseBody> deleteUser(Int)
++ List<Feedback> getFeedbacks()
++ void approveFeedback(Int)
++ void rejectFeedback(Int,RejectReason)
++ List<InpatientCareResponse> getInpatientCares(Int,String)
++ InpatientCareResponse createInpatientCare(InpatientCareCreate,Int)
++ void updateInpatientCare(Int,String)
++ List<UserSearchResult> searchUsers(Int,String)
++ List<MedicalCenter> getMedicalCenters()
++ Response<ResponseBody> updateMedicalCenter(Int,MedicalCenter)
++ MedicalCenter createMedicalCenter(MedicalCenter)
++ Response<ResponseBody> deleteMedicalCenter(Int)
++ List<AppointmentResponse> getDoctorAppointments(Int,String,String?)
++ Response<Unit> createAppointment(Int,Int,String,String,String?)
++ List<RecordResponse> getPatientRecords(Int)
++ List<FreeSlot> getDoctorFreeSlots(Int)
++ DoctorInfo getDoctorInfo(Int)
++ Response<Unit> updateAppointmentStatus(Int,String,Int,String?)
++ Response<Unit> createRecord(RecordCreate)
++ Response<Unit> updateAppointmentStatus(Int,String,Boolean)
++ Response<UploadPhotosResponse> uploadPhotos(List<MultipartBody.Part>)
+}
+
+class com.mgkct.diplom.RetrofitInstance {
++  BASE_URL
++ ApiService api
+}
+
+
+
+androidx.activity.ComponentActivity <|-- com.mgkct.diplom.MainActivity
+androidx.activity.ComponentActivity <|-- MainAdminActivity
+androidx.activity.ComponentActivity <|-- com.mgkct.diplom.doctor.MainDoctorActivity
+androidx.activity.ComponentActivity <|-- com.mgkct.diplom.SudoAdmin.EditAccountsActivity
+androidx.activity.ComponentActivity <|-- com.mgkct.diplom.SudoAdmin.MainSudoAdminActivity
+com.mgkct.diplom.LoginActivity +.. com.mgkct.diplom.LoginActivity$Companion
+androidx.activity.ComponentActivity <|-- com.mgkct.diplom.LoginActivity
+com.mgkct.diplom.Authenticator <|-- com.mgkct.diplom.null
+androidx.activity.ComponentActivity <|-- com.mgkct.diplom.Admin.EditAccountsFromAdminActivity
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$MedicalCenter
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$MedicalCenterCreate
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$AppointmentResponse
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$InpatientCareResponse
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$UserSearchResult
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$RecordPhotoResponse
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$RecordResponse
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$InpatientCareCreate
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$FreeSlot
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$DoctorInfo
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$RejectReason
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$Feedback
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$LicenseKeyRequest
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$LoginResponse
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$User
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$UploadPhotosResponse
+com.mgkct.diplom.ApiService +.. com.mgkct.diplom.ApiService$RecordCreate
+@enduml

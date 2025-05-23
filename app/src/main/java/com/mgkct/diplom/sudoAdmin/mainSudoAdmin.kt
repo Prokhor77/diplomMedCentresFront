@@ -150,7 +150,7 @@ fun MainSudoAdminScreen(navController: NavController) {
 //                                }
 //                            )
                             DropdownMenuItem(
-                                text = { Text("Модерация аккаунтов") },
+                                text = { Text("Управление аккаунтами") },
                                 onClick = { navController.navigate("edit_accounts") },
                                 leadingIcon = {
                                     Icon(Icons.Default.People, contentDescription = "Модерация аккаунтов")
