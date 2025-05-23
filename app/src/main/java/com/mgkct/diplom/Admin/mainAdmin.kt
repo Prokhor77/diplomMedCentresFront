@@ -1,8 +1,10 @@
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Timelapse
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -57,12 +60,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
+import com.mgkct.diplom.Admin.EditDocWorkTimeScreen
 import com.mgkct.diplom.Admin.FeedBackEdit
 import com.mgkct.diplom.Admin.ManageInpatientCareScreen
 import com.mgkct.diplom.LoginActivity
 import com.mgkct.diplom.R
 
 class MainAdminActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -70,6 +75,7 @@ class MainAdminActivity : ComponentActivity() {
             NavHost(navController, startDestination = "main_admin") {
                 composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
                 composable("edit_feedback") { FeedBackEdit(navController) }
+                composable("editDocWorkTime") { EditDocWorkTimeScreen(navController) }
                 composable("manage_inp_care") { ManageInpatientCareScreen(navController) }
                 composable("login_screen") {
 
@@ -195,9 +201,9 @@ fun MainAdminScreen(navController: NavController) {
                             )
                             DropdownMenuItem(
                                 text = { Text("Управление рабочим временем") },
-                                onClick = { navController.navigate("") },
+                                onClick = { navController.navigate("editDocWorkTime") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.AddToQueue, contentDescription = "Управление рабочим временем")
+                                    Icon(Icons.Default.Timelapse, contentDescription = "Управление рабочим временем")
                                 }
                             )
                             val context = LocalContext.current

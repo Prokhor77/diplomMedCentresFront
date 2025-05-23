@@ -54,8 +54,11 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.platform.LocalContext
 import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
+import com.mgkct.diplom.Admin.EditDocWorkTimeScreen
 import com.mgkct.diplom.Admin.FeedBackEdit
 import com.mgkct.diplom.Admin.ManageInpatientCareScreen
 import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
@@ -67,6 +70,7 @@ import com.mgkct.diplom.doctor.SearchEMCScreen
 
 
 class LoginActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -81,6 +85,7 @@ class LoginActivity : ComponentActivity() {
                 composable("edit_feedback") { FeedBackEdit(navController) }
                 composable("doctor") {MainDoctorScreen(navController = navController)}
                 composable("edit_agencies") { EditAgencyScreen(navController) }
+                composable("editDocWorkTime") { EditDocWorkTimeScreen(navController) }
                 composable("manageInpCareFromDoc") { ManageInpCareFromDocScreen(navController) }
                 composable("manage_inp_care") { ManageInpatientCareScreen(navController) }
                 composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }

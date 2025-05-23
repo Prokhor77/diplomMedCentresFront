@@ -182,7 +182,9 @@ interface ApiService {
         val reason: String?
     )
 
-    // В ApiService:
+    @DELETE("/appointments/{id}")
+    suspend fun deleteAppointment(@Path("id") id: Int): Response<Unit>
+
     @GET("/doctors/{doctor_id}/info")
     suspend fun getDoctorInfo(@Path("doctor_id") doctorId: Int): DoctorInfo
 
