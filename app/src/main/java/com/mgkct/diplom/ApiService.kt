@@ -107,6 +107,7 @@ interface ApiService {
         @SerializedName("userId") val userId: Int,
         @SerializedName("fullName") val fullName: String,
         @SerializedName("time") val time: String,
+        @SerializedName("date") val date: String,
         @SerializedName("reason") val reason: String?,
         @SerializedName("active") val active: String
     )

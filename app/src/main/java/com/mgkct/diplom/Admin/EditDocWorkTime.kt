@@ -86,8 +86,8 @@ fun EditDocWorkTimeScreen(navController: NavController) {
                     .map {
                         ReceptionSlot(
                             id = it.id,
-                            date = it.time.substringBefore(" "),
-                            time = it.time.substringAfter(" "),
+                            date = it.date, // <-- теперь это дата!
+                            time = it.time,
                             reason = it.reason ?: "",
                             active = it.active,
                             userId = if (it.userId == 0) null else it.userId
@@ -275,8 +275,11 @@ fun DoctorScheduleView(
     onBackClick: () -> Unit,
     onAddClick: () -> Unit
 ) {
+    var selectedDate by remember { mutableStateOf<String?>(null) }
+    val groupedByDate = schedule.groupBy { it.date }
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Заголовок с информацией о враче
+        // Doctor info card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -317,7 +320,7 @@ fun DoctorScheduleView(
             }
         }
 
-        // Кнопка добавления дня приёма
+        // Add appointment day button
         Button(
             onClick = onAddClick,
             modifier = Modifier
@@ -327,7 +330,7 @@ fun DoctorScheduleView(
             Text("Добавить день приёма")
         }
 
-        // Расписание
+        // Schedule section
         Text(
             text = "График работы",
             style = MaterialTheme.typography.titleMedium,
@@ -353,25 +356,86 @@ fun DoctorScheduleView(
                 }
             }
         } else {
-            // Группируем по дате
-            val grouped = schedule.groupBy { it.date }
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                grouped.forEach { (date, slots) ->
-                    item {
-                        Text(
-                            text = date,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(vertical = 4.dp)
+            if (selectedDate == null) {
+                // Show dates list
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(groupedByDate.keys.toList()) { date ->
+                        DateCard(
+                            date = date,
+                            slotsCount = groupedByDate[date]?.size ?: 0,
+                            onClick = { selectedDate = date }
                         )
                     }
-                    items(slots) { slot ->
-                        AppointmentSlotCard(slot = slot, showDate = false)
+                }
+            } else {
+                // Show slots for selected date
+                Column {
+                    // Back button to return to dates list
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Дата: $selectedDate",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        TextButton(onClick = { selectedDate = null }) {
+                            Text("Назад к датам")
+                        }
+                    }
+
+                    // Slots for selected date
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        val dateSlots = groupedByDate[selectedDate] ?: emptyList()
+                        items(dateSlots) { slot ->
+                            AppointmentSlotCard(slot = slot, showDate = false)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DateCard(date: String, slotsCount: Int, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = date,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+
+            Text(
+                text = "$slotsCount слотов",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+            )
         }
     }
 }
