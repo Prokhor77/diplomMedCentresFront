@@ -102,6 +102,13 @@ interface ApiService {
         @Query("active") active: String?
     ): List<AppointmentResponse>
 
+    @GET("/doctor/appointments/range")
+    suspend fun getDoctorAppointmentsRange(
+        @Query("doctorId") doctorId: Int,
+        @Query("start_date") startDate: String,
+        @Query("end_date") endDate: String
+    ): List<ApiService.AppointmentResponse>
+
     data class AppointmentResponse(
         @SerializedName("id") val id: Int,
         @SerializedName("userId") val userId: Int,

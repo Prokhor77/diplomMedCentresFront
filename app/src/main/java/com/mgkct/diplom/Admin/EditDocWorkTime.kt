@@ -77,16 +77,18 @@ fun EditDocWorkTimeScreen(navController: NavController) {
     }
 
     // Загрузка расписания выбранного врача
-    fun loadSchedule(doctorId: Int) {
+    fun loadScheduleRange(doctorId: Int) {
         scope.launch {
             loading = true
             try {
-                val today = LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
-                schedule = RetrofitInstance.api.getDoctorAppointments(doctorId, today, null)
+                val today = LocalDate.now()
+                val startDate = today.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+                val endDate = today.plusDays(4).format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+                schedule = RetrofitInstance.api.getDoctorAppointmentsRange(doctorId, startDate, endDate)
                     .map {
                         ReceptionSlot(
                             id = it.id,
-                            date = it.date, // <-- теперь это дата!
+                            date = it.date,
                             time = it.time,
                             reason = it.reason ?: "",
                             active = it.active,
@@ -179,7 +181,7 @@ fun EditDocWorkTimeScreen(navController: NavController) {
                                     doctor = doctor,
                                     onClick = {
                                         selectedDoctor = doctor
-                                        loadSchedule(doctor.id)
+                                        loadScheduleRange(doctor.id)
                                     }
                                 )
                             }
@@ -216,7 +218,7 @@ fun EditDocWorkTimeScreen(navController: NavController) {
                                     reason = null
                                 )
                             }
-                            loadSchedule(selectedDoctor!!.id)
+                            loadScheduleRange(selectedDoctor!!.id)
                             Toast.makeText(context, "День приёма добавлен", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
                             Toast.makeText(context, "Ошибка добавления", Toast.LENGTH_SHORT).show()
@@ -563,6 +565,8 @@ fun AddReceptionDayDialog(
         }
     )
 }
+
+
 
 fun generateTimeSlots(start: String, end: String, interval: Int): List<String> {
     val result = mutableListOf<String>()
