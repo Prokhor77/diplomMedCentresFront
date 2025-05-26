@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainUserScreen(navController: NavController) {
+
     val context = LocalContext.current
     val sharedPref = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
     val userId = sharedPref.getInt("userId", 0)
@@ -115,7 +116,7 @@ fun MainUserScreen(navController: NavController) {
                             text = { Text("Мои приемы") },
                             onClick = {
                                 expandedMenu = false
-                                navController.navigate("edit_accounts_admin")
+                                navController.navigate("user_history")
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.AccountCircle, contentDescription = "Мои приемы")

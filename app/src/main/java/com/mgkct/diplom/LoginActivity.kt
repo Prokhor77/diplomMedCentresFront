@@ -68,6 +68,7 @@ import com.mgkct.diplom.doctor.ManageInpCareFromDocScreen
 import com.mgkct.diplom.doctor.ManageTalonsScreen
 import com.mgkct.diplom.doctor.SearchEMCScreen
 import com.mgkct.diplom.user.MainUserScreen
+import com.mgkct.diplom.user.MyHistoryScreen
 
 
 class LoginActivity : ComponentActivity() {
@@ -82,6 +83,7 @@ class LoginActivity : ComponentActivity() {
             ) {
                 composable("user") { MainUserScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
+                composable("user_history") { MyHistoryScreen(navController) }
                 composable("edit_accounts") { EditAccountsScreen(navController) }
                 composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
                 composable("edit_feedback") { FeedBackEdit(navController) }
