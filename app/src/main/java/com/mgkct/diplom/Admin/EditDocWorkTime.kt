@@ -102,6 +102,21 @@ fun EditDocWorkTimeScreen(navController: NavController) {
         }
     }
 
+    fun deleteSlot(slotId: Int) {
+        scope.launch {
+            loading = true
+            try {
+                RetrofitInstance.api.deleteAppointment(slotId)
+                // После удаления обновляем расписание
+                selectedDoctor?.let { loadScheduleRange(it.id) }
+                Toast.makeText(context, "Слот удалён", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка удаления", Toast.LENGTH_SHORT).show()
+            }
+            loading = false
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Фон
         Image(
@@ -193,7 +208,8 @@ fun EditDocWorkTimeScreen(navController: NavController) {
                         doctor = selectedDoctor!!,
                         schedule = schedule,
                         onBackClick = { selectedDoctor = null },
-                        onAddClick = { showAddDialog = true }
+                        onAddClick = { showAddDialog = true },
+                        onDeleteSlot = { slotId -> deleteSlot(slotId) }
                     )
                 }
             }
@@ -275,7 +291,8 @@ fun DoctorScheduleView(
     doctor: DoctorListItem,
     schedule: List<ReceptionSlot>,
     onBackClick: () -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onDeleteSlot: (slotId: Int) -> Unit
 ) {
     var selectedDate by remember { mutableStateOf<String?>(null) }
     val groupedByDate = schedule.groupBy { it.date }
@@ -359,12 +376,12 @@ fun DoctorScheduleView(
             }
         } else {
             if (selectedDate == null) {
-                // Show dates list
+                // Показываем список дат
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    items(groupedByDate.keys.toList()) { date ->
+                    items(groupedByDate.keys.sorted()) { date ->
                         DateCard(
                             date = date,
                             slotsCount = groupedByDate[date]?.size ?: 0,
@@ -373,9 +390,8 @@ fun DoctorScheduleView(
                     }
                 }
             } else {
-                // Show slots for selected date
+                // Показываем слоты на выбранную дату
                 Column {
-                    // Back button to return to dates list
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -393,14 +409,19 @@ fun DoctorScheduleView(
                         }
                     }
 
-                    // Slots for selected date
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         val dateSlots = groupedByDate[selectedDate] ?: emptyList()
                         items(dateSlots) { slot ->
-                            AppointmentSlotCard(slot = slot, showDate = false)
+                            AppointmentSlotCard(
+                                slot = slot,
+                                showDate = false,
+                                onDeleteClick = if (slot.userId == null) {
+                                    { onDeleteSlot(slot.id) }
+                                } else null
+                            )
                         }
                     }
                 }
@@ -443,7 +464,11 @@ fun DateCard(date: String, slotsCount: Int, onClick: () -> Unit) {
 }
 
 @Composable
-fun AppointmentSlotCard(slot: ReceptionSlot, showDate: Boolean = true) {
+fun AppointmentSlotCard(
+    slot: ReceptionSlot,
+    showDate: Boolean = true,
+    onDeleteClick: (() -> Unit)? = null
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -482,24 +507,41 @@ fun AppointmentSlotCard(slot: ReceptionSlot, showDate: Boolean = true) {
                 )
             }
 
-            AssistChip(
-                onClick = { /* handle click if needed */ },
-                label = {
-                    Text(
-                        text = if (slot.userId != null) "Занято" else "Свободно",
-                        color = if (slot.userId != null)
-                            MaterialTheme.colorScheme.error
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                AssistChip(
+                    onClick = { /* handle click if needed */ },
+                    label = {
+                        Text(
+                            text = if (slot.userId != null) "Занято" else "Свободно",
+                            color = if (slot.userId != null)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (slot.userId != null)
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
                         else
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                     )
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = if (slot.userId != null)
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                    else
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                 )
-            )
+                if (slot.userId == null && onDeleteClick != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    TextButton(
+                        onClick = onDeleteClick,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Удалить")
+                    }
+                }
+            }
         }
     }
 }
