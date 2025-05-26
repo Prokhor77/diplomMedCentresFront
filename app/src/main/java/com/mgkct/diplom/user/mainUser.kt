@@ -3,30 +3,27 @@ package com.mgkct.diplom.user
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocalHospital
-import androidx.compose.material.icons.filled.Message
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.mgkct.diplom.R
@@ -51,9 +48,13 @@ fun MainUserScreen(navController: NavController) {
     var showQrDialog by remember { mutableStateOf(false) }
     var expandedMenu by remember { mutableStateOf(false) }
 
-    // Новые состояния для центра
     var centerName by remember { mutableStateOf<String?>(null) }
     var centerAddress by remember { mutableStateOf<String?>(null) }
+
+    // --- Education (обучение) ---
+    var showEducation by remember { mutableStateOf(false) }
+    var educationStep by remember { mutableStateOf(0) }
+    var educationChecked by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -73,6 +74,14 @@ fun MainUserScreen(navController: NavController) {
                 val myCenter = centers.find { it.id == medCenterId }
                 centerName = myCenter?.name ?: "Не найден"
                 centerAddress = myCenter?.address ?: "Не найден"
+
+                // Получаем education (обучение)
+                val users = RetrofitInstance.api.getUsers()
+                val me = users.find { it.id == userId }
+                if (me != null && me.education == "false") {
+                    showEducation = true
+                }
+                educationChecked = true
             } catch (e: Exception) {
                 error = "Ошибка загрузки данных: ${e.localizedMessage}"
             } finally {
@@ -169,7 +178,7 @@ fun MainUserScreen(navController: NavController) {
                 modifier = Modifier.matchParentSize()
             )
 
-            if (isLoading) {
+            if (isLoading || !educationChecked) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (error != null) {
                 Text(
@@ -292,6 +301,108 @@ fun MainUserScreen(navController: NavController) {
                                 modifier = Modifier.padding(start = 8.dp)
                             )
                         }
+                    }
+                }
+            }
+
+            // --- Education Overlay ---
+            if (showEducation) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .zIndex(10f)
+                ) {
+                    when (educationStep) {
+                        0 -> {
+                            // Шаг 1: QR-код
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowUpward,
+                                    contentDescription = "Arrow",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(44.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    "Это ваш QR-код! Покажите его у врача для быстрой записи и идентификации.",
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                        1 -> {
+                            // Шаг 2: Меню
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 18.dp, end = 20.dp), // подбери значения под свой Toolbar
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Arrow",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(64.dp)
+                                        .rotate(200f)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "В этом меню вы можете записаться на прием или посмотреть историю своих посещений.",
+                                    color = Color.White,
+                                    fontSize = 20.sp,
+                                    textAlign = TextAlign.End
+                                )
+                            }
+                        }
+                        2 -> {
+                            // Шаг 3: Рейтинг
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = 180.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowUpward,
+                                    contentDescription = "Arrow",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(64.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Следите за рейтингом врачей вашего центра!",
+                                    color = Color.White,
+                                    fontSize = 20.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            if (educationStep < 2) {
+                                educationStep++
+                            } else {
+                                showEducation = false
+                                coroutineScope.launch {
+                                    try {
+                                        RetrofitInstance.api.updateEducation(userId)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp)
+                    ) {
+                        Text(if (educationStep < 2) "Далее" else "Готово")
                     }
                 }
             }

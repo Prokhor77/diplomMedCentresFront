@@ -28,8 +28,9 @@ interface ApiService {
     suspend fun getAverageDoctorRating(@Path("centerId") centerId: Int): AverageRatingResponse
 
     data class AverageRatingResponse(val average_rating: Double?)
-    // Add these data classes
 
+    @PATCH("/users/{id}/education")
+    suspend fun updateEducation(@Path("id") id: Int)
 
     @PUT("/users/{id}")
     suspend fun updateUser(@Path("id") id: Int, @Body user: User): User
@@ -258,7 +259,8 @@ interface ApiService {
         val centerName: String? = null,
         val work_type: String? = null,
         val experience: String? = null,
-        val category: String? = null
+        val category: String? = null,
+        val education: String? = null
     )
     @POST("records")
     suspend fun createRecord(@Body record: RecordCreate): Response<Unit>
