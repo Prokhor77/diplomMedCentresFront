@@ -272,6 +272,10 @@ interface ApiService {
         @Query("clear_data") clearData: Boolean = false
     ): Response<Unit>
 
+    @POST("/tg-bind/start")
+    suspend fun tgBindStart(@Query("user_id") userId: Int): TgBindCodeResponse
+
+    data class TgBindCodeResponse(val code: String)
 
     @Multipart
     @POST("records/upload-photos")

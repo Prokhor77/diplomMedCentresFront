@@ -142,6 +142,17 @@ fun MainUserScreen(navController: NavController) {
                                 Icon(Icons.Default.LocalHospital, contentDescription = "Записаться на прием")
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text("Привязать TG Аккаунт") },
+                            onClick = {
+                                expandedMenu = false
+                                navController.navigate("tgBind")
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.LocalHospital, contentDescription = "Привязать TG Аккаунт")
+                            }
+                        )
+
                         val context = LocalContext.current
 
                         DropdownMenuItem(
