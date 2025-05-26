@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Message
@@ -130,6 +131,24 @@ fun MainUserScreen(navController: NavController) {
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.LocalHospital, contentDescription = "Записаться на прием")
+                            }
+                        )
+                        val context = LocalContext.current
+
+                        DropdownMenuItem(
+                            text = { Text("Выйти") },
+                            onClick = {
+                                val sharedPref = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                                with(sharedPref.edit()) {
+                                    clear()
+                                    apply()
+                                }
+                                navController.navigate("login_screen") {
+                                    popUpTo(0)
+                                }
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.ExitToApp, contentDescription = "Выход")
                             }
                         )
                     }
