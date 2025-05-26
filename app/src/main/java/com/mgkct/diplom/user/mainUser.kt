@@ -126,7 +126,7 @@ fun MainUserScreen(navController: NavController) {
                             text = { Text("Записаться на прием") },
                             onClick = {
                                 expandedMenu = false
-                                navController.navigate("")
+                                navController.navigate("user_manageTalon")
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.LocalHospital, contentDescription = "Записаться на прием")
