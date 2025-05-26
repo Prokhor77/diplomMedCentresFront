@@ -67,6 +67,7 @@ import com.mgkct.diplom.doctor.MainDoctorScreen
 import com.mgkct.diplom.doctor.ManageInpCareFromDocScreen
 import com.mgkct.diplom.doctor.ManageTalonsScreen
 import com.mgkct.diplom.doctor.SearchEMCScreen
+import com.mgkct.diplom.user.MainUserScreen
 
 
 class LoginActivity : ComponentActivity() {
@@ -79,6 +80,7 @@ class LoginActivity : ComponentActivity() {
                 navController = navController,
                 startDestination = "login_screen"
             ) {
+                composable("user") { MainUserScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
                 composable("edit_accounts") { EditAccountsScreen(navController) }
                 composable("main_sudo_admin") { MainSudoAdminScreen(navController) }
@@ -225,6 +227,7 @@ fun LoginScreen(navController: NavController) {
                                         "sudo-admin" -> navController.navigate("main_sudo_admin")
                                         "admin" -> navController.navigate("main_admin")
                                         "doctor" -> navController.navigate("doctor")
+                                        "user" -> navController.navigate("user")
                                         else -> errorMessage = "Неизвестная роль: ${response.role}"
                                     }
                                 } catch (e: HttpException) {

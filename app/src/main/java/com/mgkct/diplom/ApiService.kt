@@ -18,6 +18,19 @@ interface ApiService {
     @POST("/users")
     suspend fun addUser(@Body user: User): User
 
+    // Add to your ApiService interface
+    @GET("/users/{userId}/qrcode")
+    suspend fun getUserQrCode(@Path("userId") userId: Int): QrCodeResponse
+
+    data class QrCodeResponse(val path: String)
+
+    @GET("/med-centers/{centerId}/doctors/average-rating")
+    suspend fun getAverageDoctorRating(@Path("centerId") centerId: Int): AverageRatingResponse
+
+    data class AverageRatingResponse(val average_rating: Double?)
+    // Add these data classes
+
+
     @PUT("/users/{id}")
     suspend fun updateUser(@Path("id") id: Int, @Body user: User): User
 
