@@ -149,7 +149,7 @@ fun MainUserScreen(navController: NavController) {
                                 navController.navigate("tgBind")
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.LocalHospital, contentDescription = "Привязать TG Аккаунт")
+                                Icon(Icons.Default.AddAlert, contentDescription = "Привязать TG Аккаунт")
                             }
                         )
 

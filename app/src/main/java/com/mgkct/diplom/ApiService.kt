@@ -292,6 +292,17 @@ interface ApiService {
     @POST("/notify/record-complete")
     suspend fun notifyRecordComplete(@Body body: RecordCompleteNotifyRequest): Response<Unit>
 
+    @GET("/stats/appointments-today")
+    suspend fun getAppointmentsToday(@Query("med_center_id") medCenterId: Int): CountResponse
+
+    @GET("/stats/doctors-count")
+    suspend fun getDoctorsCount(@Query("med_center_id") medCenterId: Int): CountResponse
+
+    @GET("/stats/inpatient-patients-count")
+    suspend fun getInpatientPatientsCount(@Query("med_center_id") medCenterId: Int): CountResponse
+
+    data class CountResponse(val count: Int)
+
     data class TgIdResponse(val tgId: Int?)
     @POST("/tg-bind/unlink")
     suspend fun tgUnlink(@Body request: TgUnlinkRequest)

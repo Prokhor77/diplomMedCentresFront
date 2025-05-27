@@ -41,6 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +56,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -63,79 +67,77 @@ import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
 import com.mgkct.diplom.Admin.EditDocWorkTimeScreen
 import com.mgkct.diplom.Admin.FeedBackEdit
 import com.mgkct.diplom.Admin.ManageInpatientCareScreen
+import com.mgkct.diplom.ApiService
 import com.mgkct.diplom.LoginActivity
 import com.mgkct.diplom.R
+import com.mgkct.diplom.RetrofitInstance
+import kotlinx.coroutines.launch
 
-class MainAdminActivity : ComponentActivity() {
-    @RequiresApi(Build.VERSION_CODES.O)
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            val navController = rememberNavController()
-            NavHost(navController, startDestination = "main_admin") {
-                composable("edit_accounts_admin") { EditAccountsFromAdminScreen(navController) }
-                composable("edit_feedback") { FeedBackEdit(navController) }
-                composable("editDocWorkTime") { EditDocWorkTimeScreen(navController) }
-                composable("manage_inp_care") { ManageInpatientCareScreen(navController) }
-                composable("login_screen") {
+class AdminStatsViewModel : ViewModel() {
+    var appointmentsToday by mutableStateOf<Int?>(null)
+    var doctorsCount by mutableStateOf<Int?>(null)
+    var averageRating by mutableStateOf<Double?>(null)
+    var inpatientPatientsCount by mutableStateOf<Int?>(null)
+    var isLoading by mutableStateOf(false)
 
-
-                    val sharedPref = LocalContext.current.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
-                    val fullName = sharedPref.getString("fullName", "Имя не найдено") ?: "Имя не найдено"
-                    val centerName = sharedPref.getString("centerName", "") ?: ""
-                    val medCenterId = sharedPref.getInt("medCenterId", 0)
-
-                    Log.d("MainAdminScreen", "Retrieved data:")
-                    Log.d("MainAdminScreen", "fullName: $fullName")
-                    Log.d("MainAdminScreen", "centerName: $centerName")
-                    Log.d("MainAdminScreen", "medCenterId: $medCenterId")
-
-                    MainAdminScreen(
-                        navController = navController,
-
-                    )
-                }
+    fun loadStats(medCenterId: Int) {
+        isLoading = true
+        viewModelScope.launch {
+            try {
+                appointmentsToday = RetrofitInstance.api.getAppointmentsToday(medCenterId).count
+                doctorsCount = RetrofitInstance.api.getDoctorsCount(medCenterId).count
+                averageRating = RetrofitInstance.api.getAverageDoctorRating(medCenterId).average_rating
+                inpatientPatientsCount = RetrofitInstance.api.getInpatientPatientsCount(medCenterId).count
+            } catch (e: Exception) {
+                // Можно добавить обработку ошибок
+            } finally {
+                isLoading = false
             }
         }
     }
 }
 
+// --- MAIN ACTIVITY ---
+
+class MainAdminActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            val navController = rememberNavController()
+            NavHost(navController, startDestination = "main_admin") {
+                composable("main_admin") { MainAdminScreen(navController) }
+                // Добавьте остальные экраны по необходимости
+            }
+        }
+    }
+}
+
+// --- MAIN ADMIN SCREEN ---
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAdminScreen(navController: NavController) {
     val context = LocalContext.current
-    val sharedPref = context.getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+    val sharedPref = context.getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
     val fullName = sharedPref.getString("fullName", "") ?: ""
     val centerName = sharedPref.getString("centerName", "") ?: ""
     val medCenterId = sharedPref.getInt("medCenterId", 0)
 
-    Log.d("MainAdminScreen", "Retrieved data:")
-    Log.d("MainAdminScreen", "fullName: $fullName")
-    Log.d("MainAdminScreen", "centerName: $centerName")
-    Log.d("MainAdminScreen", "medCenterId: $medCenterId")
+    val viewModel: AdminStatsViewModel = viewModel()
 
-    val medicalCenter = centerName
-    val totalAppointments = 35
-    val totalDoctors = 134
-    val doctorsrate = 4.3
-    val inpPatients = 6
-
-    val registeredPatients = 120
-    val avgWaitingTime = "15 минут"
-
-    val dailyIncome = "2500 BYN"
-    val paidServices = 48
-    val freeServices = 165
-
-    val newRequests = 5
-    val complaints = 2
+    LaunchedEffect(medCenterId) {
+        if (medCenterId != 0) {
+            viewModel.loadStats(medCenterId)
+        }
+    }
 
     var expandedMenu by remember { mutableStateOf(false) }
 
     val data = listOf(
-        "Приемов за сегодня: $totalAppointments",
-        "Общее кол-во врачей: $totalDoctors",
-        "Общий рейтинг врачей: $doctorsrate",
-        "Количество пациентов стац лечения: $inpPatients"
+        "Приемов за сегодня: ${viewModel.appointmentsToday?.toString() ?: "…"}",
+        "Общее кол-во врачей: ${viewModel.doctorsCount?.toString() ?: "…"}",
+        "Общий рейтинг врачей: ${viewModel.averageRating?.toString() ?: "…"}",
+        "Количество пациентов стац лечения: ${viewModel.inpatientPatientsCount?.toString() ?: "…"}"
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -224,7 +226,6 @@ fun MainAdminScreen(navController: NavController) {
                                     Icon(Icons.Default.ExitToApp, contentDescription = "Выход")
                                 }
                             )
-
                         }
                     }
                 )
@@ -241,7 +242,7 @@ fun MainAdminScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = medicalCenter,
+                    text = centerName,
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
                 )
 
@@ -259,42 +260,37 @@ fun MainAdminScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Статистика пациентов
                 InfoSection(
                     title = "📊 Статистика пациентов",
                     items = listOf(
-                        "Количество записанных пациентов: $registeredPatients",
-                        "Среднее время приема: $avgWaitingTime"
+                        "Количество записанных пациентов на сегодня: 120",
+                        "Среднее время приема: 15 минут"
                     )
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Финансовая статистика
                 InfoSection(
                     title = "💰 Финансовая статистика",
                     items = listOf(
-                        "Доход за день: $dailyIncome",
-                        "Оплаченные услуги: $paidServices",
-                        "Бесплатные услуги: $freeServices"
+                        "Доход за день: 2500 BYN",
+                        "Оплаченные услуги: 48",
+                        "Бесплатные услуги: 165"
                     )
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Заявки и жалобы
                 InfoSection(
                     title = "📩 Заявки и жалобы",
                     items = listOf(
-                        "Новые заявки на рассмотрение: $newRequests",
-                        "Жалобы от пациентов за неделю: $complaints"
+                        "Новые отзывы на рассмотрение: 5",
+                        "Отзывы от пациентов за неделю: 2"
                     )
                 )
             }
         }
     }
-
-
 }
 
 @Composable
