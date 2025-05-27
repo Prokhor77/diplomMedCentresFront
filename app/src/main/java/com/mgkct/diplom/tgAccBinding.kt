@@ -3,8 +3,6 @@ package com.mgkct.diplom.tg
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
@@ -15,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipboardManager
@@ -30,6 +27,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.mgkct.diplom.ApiService
 import com.mgkct.diplom.R
 import com.mgkct.diplom.RetrofitInstance
 import kotlinx.coroutines.launch
@@ -43,19 +41,38 @@ fun TgAccBindingScreen(navController: NavHostController) {
     var code by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var tgId by remember { mutableStateOf<Int?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
 
-    // Получаем код с бэка
+    // Получаем текущий Telegram ID пользователя
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             try {
-                val resp = RetrofitInstance.api.tgBindStart(userId)
-                code = resp.code
+                val resp = RetrofitInstance.api.getUserTgId(userId)
+                tgId = resp.tgId
             } catch (e: Exception) {
-                error = "Ошибка получения кода: ${e.localizedMessage}"
+                // ignore
             } finally {
                 isLoading = false
+            }
+        }
+    }
+
+    // Получаем код для привязки, если Telegram не привязан
+    LaunchedEffect(tgId) {
+        if (tgId == null) {
+            isLoading = true
+            coroutineScope.launch {
+                try {
+                    val resp = RetrofitInstance.api.tgBindStart(userId)
+                    code = resp.code
+                    error = null
+                } catch (e: Exception) {
+                    error = "Ошибка получения кода: ${e.localizedMessage}"
+                } finally {
+                    isLoading = false
+                }
             }
         }
     }
@@ -88,7 +105,6 @@ fun TgAccBindingScreen(navController: NavHostController) {
                 contentScale = ContentScale.Crop
             )
 
-            // Контент в карточке
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -109,7 +125,57 @@ fun TgAccBindingScreen(navController: NavHostController) {
                             modifier = Modifier.padding(32.dp)
                         )
                     }
+                } else if (tgId != null) {
+                    // Telegram уже привязан
+                    Card(
+                        shape = RoundedCornerShape(32.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
+                        elevation = CardDefaults.cardElevation(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(28.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "Ваш Telegram уже привязан",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = Color(0xFF1E88E5)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Ваш Telegram ID: $tgId",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFF333333)
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        try {
+                                            RetrofitInstance.api.tgUnlink(
+                                                ApiService.TgUnlinkRequest(
+                                                    userId
+                                                )
+                                            )
+                                            tgId = null
+                                            Toast.makeText(context, "Telegram отвязан", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Ошибка: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("Отвязать Telegram")
+                            }
+                        }
+                    }
                 } else {
+                    // Привязка Telegram
                     Card(
                         shape = RoundedCornerShape(32.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),

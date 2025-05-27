@@ -275,6 +275,14 @@ interface ApiService {
     @POST("/tg-bind/start")
     suspend fun tgBindStart(@Query("user_id") userId: Int): TgBindCodeResponse
 
+    @GET("/users/{userId}/tg-id")
+    suspend fun getUserTgId(@Path("userId") userId: Int): TgIdResponse
+
+    data class TgIdResponse(val tgId: Int?)
+    @POST("/tg-bind/unlink")
+    suspend fun tgUnlink(@Body request: TgUnlinkRequest)
+    data class TgUnlinkRequest(val user_id: Int)
+
     data class TgBindCodeResponse(val code: String)
 
     @Multipart
