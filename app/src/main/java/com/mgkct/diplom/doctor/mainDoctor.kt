@@ -670,6 +670,18 @@ fun AppointmentCard(
                             appointment.id,
                             "false"
                         )
+                        val notifyBody = ApiService.RecordCompleteNotifyRequest(
+                            user_id = appointment.userId,
+                            doctor_id = getUserIdFromPrefs(context),
+                            description = record.description,
+                            assignment = record.assignment,
+                            paid_or_free = record.paidOrFree,
+                            price = record.price,
+                            date = appointment.date,
+                            time = appointment.time,
+                            photo_urls = photoPaths // список путей, полученных после uploadPhotos
+                        )
+                        RetrofitInstance.api.notifyRecordComplete(notifyBody)
 
                         withContext(Dispatchers.Main) {
                             isLoading = false
@@ -684,6 +696,7 @@ fun AppointmentCard(
                             Toast.makeText(context, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                     }
+
                 }
             }
         )

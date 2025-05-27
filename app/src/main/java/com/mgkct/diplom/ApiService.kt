@@ -278,6 +278,20 @@ interface ApiService {
     @GET("/users/{userId}/tg-id")
     suspend fun getUserTgId(@Path("userId") userId: Int): TgIdResponse
 
+    data class RecordCompleteNotifyRequest(
+        val user_id: Int,
+        val doctor_id: Int,
+        val description: String,
+        val assignment: String,
+        val paid_or_free: String,
+        val price: Int?,
+        val date: String,
+        val time: String,
+        val photo_urls: List<String>
+    )
+    @POST("/notify/record-complete")
+    suspend fun notifyRecordComplete(@Body body: RecordCompleteNotifyRequest): Response<Unit>
+
     data class TgIdResponse(val tgId: Int?)
     @POST("/tg-bind/unlink")
     suspend fun tgUnlink(@Body request: TgUnlinkRequest)
