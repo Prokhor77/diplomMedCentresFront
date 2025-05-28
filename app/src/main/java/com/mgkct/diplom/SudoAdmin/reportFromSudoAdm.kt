@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -104,6 +105,7 @@ class ReportViewModel : ViewModel() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportFromSudoAdmScreen(
+    onBack: () -> Unit,
     viewModel: ReportViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val context = LocalContext.current
@@ -129,7 +131,15 @@ fun ReportFromSudoAdmScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Отчеты") }
+                    title = { Text("Отчеты") },
+                    navigationIcon = {
+                        IconButton(onClick = { onBack() }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Назад"
+                            )
+                        }
+                    }
                 )
             },
             containerColor = Color.Transparent

@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddBusiness
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
@@ -185,13 +186,13 @@ fun MainSudoAdminScreen(navController: NavController) {
                                     Icon(Icons.Default.AddBusiness, contentDescription = "Модерация учреждений")
                                 }
                             )
-//                            DropdownMenuItem(
-//                                text = { Text("Отчёты") },
-//                                onClick = { menuExpanded = false },
-//                                leadingIcon = {
-//                                    Icon(Icons.Default.Assessment, contentDescription = "Отчёты")
-//                                }
-//                            )
+                            DropdownMenuItem(
+                                text = { Text("Отчёты") },
+                                onClick = { navController.navigate("reports_from_sudo") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Assessment, contentDescription = "Отчёты")
+                                }
+                            )
                             val context = LocalContext.current // Объявляем контекст один раз в Composable
 
                             DropdownMenuItem(
