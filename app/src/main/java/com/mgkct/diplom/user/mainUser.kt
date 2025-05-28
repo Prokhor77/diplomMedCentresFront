@@ -143,6 +143,16 @@ fun MainUserScreen(navController: NavController) {
                             }
                         )
                         DropdownMenuItem(
+                            text = { Text("Отзывы") },
+                            onClick = {
+                                expandedMenu = false
+                                navController.navigate("")
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.LocalHospital, contentDescription = "Записаться на прием")
+                            }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Привязать TG Аккаунт") },
                             onClick = {
                                 expandedMenu = false

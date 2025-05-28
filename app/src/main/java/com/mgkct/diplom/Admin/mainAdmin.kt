@@ -78,6 +78,14 @@ class AdminStatsViewModel : ViewModel() {
     var doctorsCount by mutableStateOf<Int?>(null)
     var averageRating by mutableStateOf<Double?>(null)
     var inpatientPatientsCount by mutableStateOf<Int?>(null)
+
+    var averageAppointmentTime by mutableStateOf<Double?>(null)
+    var incomeToday by mutableStateOf<Int?>(null)
+    var paidCount by mutableStateOf<Int?>(null)
+    var freeCount by mutableStateOf<Int?>(null)
+    var feedbacksInProgress by mutableStateOf<Int?>(null)
+    var feedbacksWeek by mutableStateOf<Int?>(null)
+
     var isLoading by mutableStateOf(false)
 
     fun loadStats(medCenterId: Int) {
@@ -88,8 +96,16 @@ class AdminStatsViewModel : ViewModel() {
                 doctorsCount = RetrofitInstance.api.getDoctorsCount(medCenterId).count
                 averageRating = RetrofitInstance.api.getAverageDoctorRating(medCenterId).average_rating
                 inpatientPatientsCount = RetrofitInstance.api.getInpatientPatientsCount(medCenterId).count
+
+                averageAppointmentTime = RetrofitInstance.api.getAverageAppointmentTime(medCenterId).average_time_minutes
+                incomeToday = RetrofitInstance.api.getIncomeToday(medCenterId).income
+                val paidFree = RetrofitInstance.api.getPaidFreeCounts(medCenterId)
+                paidCount = paidFree.paid
+                freeCount = paidFree.free
+                feedbacksInProgress = RetrofitInstance.api.getFeedbacksInProgress(medCenterId).count
+                feedbacksWeek = RetrofitInstance.api.getFeedbacksWeek(medCenterId).count
             } catch (e: Exception) {
-                // Можно добавить обработку ошибок
+                // обработка ошибок
             } finally {
                 isLoading = false
             }
@@ -263,29 +279,24 @@ fun MainAdminScreen(navController: NavController) {
                 InfoSection(
                     title = "📊 Статистика пациентов",
                     items = listOf(
-                        "Количество записанных пациентов на сегодня: 120",
-                        "Среднее время приема: 15 минут"
+                        "Среднее время приема сегодня: ${viewModel.averageAppointmentTime?.let { "$it минут" } ?: "…"}"
                     )
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 InfoSection(
                     title = "💰 Финансовая статистика",
                     items = listOf(
-                        "Доход за день: 2500 BYN",
-                        "Оплаченные услуги: 48",
-                        "Бесплатные услуги: 165"
+                        "Доход за день: ${viewModel.incomeToday?.let { "$it BYN" } ?: "…"}",
+                        "Оплаченные услуги: ${viewModel.paidCount?.toString() ?: "…"}",
+                        "Бесплатные услуги: ${viewModel.freeCount?.toString() ?: "…"}"
                     )
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 InfoSection(
                     title = "📩 Заявки и жалобы",
                     items = listOf(
-                        "Новые отзывы на рассмотрение: 5",
-                        "Отзывы от пациентов за неделю: 2"
+                        "Новые отзывы на рассмотрение: ${viewModel.feedbacksInProgress?.toString() ?: "…"}",
+                        "Всего отзывов от пациентов: ${viewModel.feedbacksWeek?.toString() ?: "…"}"
                     )
                 )
             }

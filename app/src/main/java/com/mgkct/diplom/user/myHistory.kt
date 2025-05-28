@@ -26,6 +26,61 @@ import com.mgkct.diplom.R
 import com.mgkct.diplom.RetrofitInstance
 import kotlinx.coroutines.launch
 
+@Composable
+fun ReviewDialog(
+    record: ApiService.RecordResponse,
+    onDismiss: () -> Unit,
+    onSubmit: (Int, String) -> Unit
+) {
+    var grade by remember { mutableStateOf(5) }
+    var description by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSubmit(grade, description)
+                },
+                enabled = description.isNotBlank()
+            ) {
+                Text("Отправить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        },
+        title = { Text("Оставить отзыв") },
+        text = {
+            Column {
+                Text("Врач: ${record.doctorFullName ?: "Неизвестно"}")
+                Text("Дата приема: ${record.time_start}")
+                Spacer(Modifier.height(8.dp))
+                Text("Оценка:")
+                Row {
+                    for (i in 1..5) {
+                        IconButton(onClick = { grade = i }) {
+                            Icon(
+                                painterResource(
+                                    if (i <= grade) R.drawable.baseline_star_24 else R.drawable.outline_star_outline_24
+                                ),
+                                contentDescription = null,
+                                tint = if (i <= grade) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Описание отзыва") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyHistoryScreen(navController: NavController) {
@@ -38,6 +93,10 @@ fun MyHistoryScreen(navController: NavController) {
     var expandedImageUrl by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    var reviewedIds by remember {
+        mutableStateOf(sharedPreferences.getStringSet("reviewedIds", emptySet())!!.toMutableSet())
+    }
+    var showReviewDialogForRecord by remember { mutableStateOf<ApiService.RecordResponse?>(null) }
 
     // Загрузка записей при запуске экрана
     LaunchedEffect(userId) {
@@ -123,10 +182,46 @@ fun MyHistoryScreen(navController: NavController) {
                                 record = record,
                                 onImageClick = { photo ->
                                     expandedImageUrl = "${RetrofitInstance.BASE_URL.trimEnd('/')}/${photo.photo_path.trimStart('/')}"
-                                }
+                                },
+                                onLeaveReview = {
+                                    showReviewDialogForRecord = record
+                                },
+                                reviewLeft = reviewedIds.contains(record.id.toString())
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                         }
+                    }
+
+                    showReviewDialogForRecord?.let { record ->
+                        ReviewDialog(
+                            record = record,
+                            onDismiss = { showReviewDialogForRecord = null },
+                            onSubmit = { grade, description ->
+                                coroutineScope.launch {
+                                    try {
+                                        val userId = sharedPreferences.getInt("userId", -1)
+                                        val medCenterId = sharedPreferences.getInt("medCenterId", -1)
+                                        RetrofitInstance.api.createFeedback(
+                                            ApiService.FeedbackCreate(
+                                                userId = userId,
+                                                doctorId = record.doctorId,
+                                                medCenterId = medCenterId,
+                                                grade = grade,
+                                                description = description
+                                            )
+                                        )
+                                        // Обновляем reviewedIds через setState
+                                        val newReviewedIds = reviewedIds.toMutableSet()
+                                        newReviewedIds.add(record.id.toString())
+                                        reviewedIds = newReviewedIds
+                                        sharedPreferences.edit().putStringSet("reviewedIds", newReviewedIds).apply()
+                                        showReviewDialogForRecord = null
+                                        snackbarHostState.showSnackbar("Отзыв отправлен")
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar("Ошибка отправки отзыва: ${e.message}")
+                                    }
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -157,7 +252,9 @@ fun MyHistoryScreen(navController: NavController) {
 @Composable
 fun MedicalRecordCard(
     record: ApiService.RecordResponse,
-    onImageClick: (ApiService.RecordPhotoResponse) -> Unit
+    onImageClick: (ApiService.RecordPhotoResponse) -> Unit,
+    onLeaveReview: () -> Unit,
+    reviewLeft: Boolean
 ) {
     Card(
         modifier = Modifier
@@ -247,6 +344,28 @@ fun MedicalRecordCard(
                             }
                         }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (reviewLeft) {
+                Button(
+                    onClick = {},
+                    enabled = false,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Отзыв уже оставлен")
+                }
+            } else {
+                Button(
+                    onClick = onLeaveReview,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Оставить отзыв")
                 }
             }
         }

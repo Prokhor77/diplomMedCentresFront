@@ -298,8 +298,41 @@ interface ApiService {
     @GET("/stats/doctors-count")
     suspend fun getDoctorsCount(@Query("med_center_id") medCenterId: Int): CountResponse
 
+    @POST("/feedbacks")
+    suspend fun createFeedback(@Body feedback: FeedbackCreate): ApiService.Feedback
+
+    data class FeedbackCreate(
+        val userId: Int,
+        val doctorId: Int,
+        val medCenterId: Int,
+        val grade: Int,
+        val description: String,
+        val active: String = "in_progress"
+    )
+
     @GET("/stats/inpatient-patients-count")
     suspend fun getInpatientPatientsCount(@Query("med_center_id") medCenterId: Int): CountResponse
+
+    @GET("/stats/average-appointment-time")
+    suspend fun getAverageAppointmentTime(@Query("med_center_id") medCenterId: Int): AverageTimeResponse
+
+    data class AverageTimeResponse(val average_time_minutes: Double)
+
+    @GET("/stats/income-today")
+    suspend fun getIncomeToday(@Query("med_center_id") medCenterId: Int): IncomeTodayResponse
+
+    data class IncomeTodayResponse(val income: Int)
+
+    @GET("/stats/paid-free-counts")
+    suspend fun getPaidFreeCounts(@Query("med_center_id") medCenterId: Int): PaidFreeCountsResponse
+
+    data class PaidFreeCountsResponse(val paid: Int, val free: Int)
+
+    @GET("/stats/feedbacks-in-progress")
+    suspend fun getFeedbacksInProgress(@Query("med_center_id") medCenterId: Int): CountResponse
+
+    @GET("/stats/feedbacks-week")
+    suspend fun getFeedbacksWeek(@Query("med_center_id") medCenterId: Int): CountResponse
 
     data class CountResponse(val count: Int)
 
