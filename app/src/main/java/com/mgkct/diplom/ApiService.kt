@@ -404,6 +404,15 @@ interface ApiService {
         val format: String = "docx"  // "docx" or "pdf"
     )
 
+    data class UserReportRequest(
+        val user_id: Int,
+        val period_days: Int,
+        val email: String,
+        val format: String = "docx"
+    )
+    @POST("reports/generate-user")
+    suspend fun generateUserReport(@Body request: UserReportRequest): Response<ReportResponse>
+
     data class ReportResponse(
         val message: String
     )

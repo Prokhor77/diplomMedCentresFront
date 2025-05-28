@@ -231,7 +231,14 @@ fun MainAdminScreen(navController: NavController) {
                                 text = { Text("Отчеты") },
                                 onClick = { navController.navigate("reports_admin") },
                                 leadingIcon = {
-                                    Icon(Icons.Default.Work, contentDescription = "Отчеты")
+                                    Icon(Icons.Default.Work, contentDescription = "Отчеты по организации")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Отчеты по пользователям") },
+                                onClick = { navController.navigate("reports_admin_for_user") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Work, contentDescription = "Отчеты по пользователям")
                                 }
                             )
                             val context = LocalContext.current
