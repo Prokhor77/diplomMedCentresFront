@@ -1,9 +1,11 @@
 package com.mgkct.diplom.SudoAdmin
 
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +38,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,13 +54,20 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.mgkct.diplom.ApiService
 import com.mgkct.diplom.LoginScreen
 import com.mgkct.diplom.R
+import com.mgkct.diplom.RetrofitInstance.api
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
 import com.patrykandpatrick.vico.core.entry.FloatEntry
 import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
+import com.patrykandpatrick.vico.compose.axis.horizontal.bottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.startAxis
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 class MainSudoAdminActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,21 +89,40 @@ fun MainSudoAdminScreen(navController: NavController) {
     var menuExpanded by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    val chartEntries = listOf(
-        FloatEntry(0f, 10f), FloatEntry(1f, 15f), FloatEntry(2f, 20f),
-        FloatEntry(3f, 18f), FloatEntry(4f, 25f), FloatEntry(5f, 30f)
-    )
-    val chartData = ChartEntryModelProducer(listOf(chartEntries))
+    val appointmentsWeek by produceState<List<ApiService.DayCount>?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) { api.getAppointmentsWeek() }
+    }
+    val inpatientWeek by produceState<List<ApiService.DayCount>?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) { api.getInpatientWeek() }
+    }
 
-    val weeklyEntries = listOf(
-        FloatEntry(0f, 50f), FloatEntry(1f, 70f), FloatEntry(2f, 80f),
-        FloatEntry(3f, 60f), FloatEntry(4f, 90f), FloatEntry(5f, 110f), FloatEntry(6f, 100f)
-    )
-    val weeklyData = ChartEntryModelProducer(listOf(weeklyEntries))
+    val todayAppointments by produceState<Int?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) { getTotalAppointmentsToday(api) }
+    }
+    val monthAppointments by produceState<Int?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) { getTotalAppointmentsMonth(api) }
+    }
+    val growthData by produceState<Pair<Int, Boolean>?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) { getGrowthPercentage(api) }
+    }
 
-    val avgAppointments = 146
-    val totalAppointments = 2302
-    val growthPercentage = 12
+    fun toChartEntries(data: List<ApiService.DayCount>?): List<FloatEntry> {
+        return data?.mapIndexed { idx, day -> FloatEntry(idx.toFloat(), day.count.toFloat()) } ?: emptyList()
+    }
+    fun toLabels(data: List<ApiService.DayCount>?): List<String> {
+        return data?.map { it.date.substring(5) } ?: emptyList() // "06-01"
+    }
+
+
+
+
+    val appointmentsEntries = toChartEntries(appointmentsWeek)
+    val appointmentsLabels = toLabels(appointmentsWeek)
+    val appointmentsChartData = ChartEntryModelProducer(listOf(appointmentsEntries))
+
+    val inpatientEntries = toChartEntries(inpatientWeek)
+    val inpatientLabels = toLabels(inpatientWeek)
+    val inpatientChartData = ChartEntryModelProducer(listOf(inpatientEntries))
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
@@ -142,13 +171,6 @@ fun MainSudoAdminScreen(navController: NavController) {
                                     Icon(Icons.Default.Home, contentDescription = "Главная")
                                 }
                             )
-//                            DropdownMenuItem(
-//                                text = { Text("Управление Мед центрами") },
-//                                onClick = { navController.navigate("add_med_center") },
-//                                leadingIcon = {
-//                                    Icon(Icons.Default.AddBusiness, contentDescription = "Управление Мед центрами")
-//                                }
-//                            )
                             DropdownMenuItem(
                                 text = { Text("Управление аккаунтами") },
                                 onClick = { navController.navigate("edit_accounts") },
@@ -210,15 +232,27 @@ fun MainSudoAdminScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    AnalyticsCard(title = "В текущий день", value = "$avgAppointments", modifier = Modifier.width(120.dp))
-                    AnalyticsCard(title = "За месяц", value = "$totalAppointments", modifier = Modifier.width(120.dp))
-                    AnalyticsCard("Рост заболеваемости", "$growthPercentage%")
+                    AnalyticsCard(
+                        title = "В текущий день",
+                        value = todayAppointments?.toString() ?: "..."
+                    )
+                    AnalyticsCard(
+                        title = "За месяц",
+                        value = monthAppointments?.toString() ?: "..."
+                    )
+                    AnalyticsCard(
+                        title = "Рост посещений",
+                        value = growthData?.let { (percent, isGrowth) ->
+                            val arrow = if (isGrowth) "↑" else "↓"
+                            "$percent% $arrow"
+                        } ?: "..."
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                LineChartSection(chartData, "График посещений за месяц")
+                LineChartSection(appointmentsChartData, "График посещений за неделю", appointmentsLabels)
                 Spacer(modifier = Modifier.height(16.dp))
-                LineChartSection(weeklyData, "График посещений за неделю")
+                LineChartSection(inpatientChartData, "График стационарного лечения за неделю", inpatientLabels)
             }
         }
     }
@@ -236,7 +270,7 @@ fun AnalyticsCard(title: String, value: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun LineChartSection(chartData: ChartEntryModelProducer, title: String) {
+fun LineChartSection(chartData: ChartEntryModelProducer, title: String, labels: List<String>) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -246,14 +280,56 @@ fun LineChartSection(chartData: ChartEntryModelProducer, title: String) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
-
             Chart(
                 chart = lineChart(),
                 model = chartData.getModel()!!,
-                modifier = Modifier.height(200.dp)
+                modifier = Modifier.height(200.dp),
+                startAxis = startAxis(),
+                bottomAxis = bottomAxis(
+                    valueFormatter = { value, _ ->
+                        val idx = value.toInt()
+                        if (idx in labels.indices) labels[idx] else ""
+                    }
+                )
             )
         }
     }
+}
+
+suspend fun getTotalAppointmentsToday(api: ApiService): Int {
+    val centers = api.getMedicalCenters()
+    var total = 0
+    for (center in centers) {
+        val count = api.getAppointmentsToday(center.id).count
+        total += count
+    }
+    return total
+}
+
+suspend fun getTotalAppointmentsMonth(api: ApiService): Int {
+    val centers = api.getMedicalCenters()
+    var total = 0
+    for (center in centers) {
+        val count = api.getAppointmentsMonth(center.id).count // реализуй этот эндпоинт!
+        total += count
+    }
+    return total
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun getGrowthPercentage(api: ApiService): Pair<Int, Boolean> {
+    val centers = api.getMedicalCenters()
+    var today = 0
+    var yesterday = 0
+    val todayStr = LocalDate.now().toString()
+    val yesterdayStr = LocalDate.now().minusDays(1).toString()
+    for (center in centers) {
+        today += api.getAppointmentsByDate(center.id, todayStr).count
+        yesterday += api.getAppointmentsByDate(center.id, yesterdayStr).count
+    }
+    val percent = if (yesterday == 0) 100 else ((today - yesterday) * 100 / yesterday)
+    val isGrowth = percent >= 0
+    return Pair(percent, isGrowth)
 }
 
 @Preview(showBackground = true)

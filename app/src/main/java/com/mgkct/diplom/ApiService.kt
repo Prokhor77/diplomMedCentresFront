@@ -391,6 +391,17 @@ interface ApiService {
         @Query("date") date: String
     ): CountResponse
 
+    @GET("/stats/appointments-week")
+    suspend fun getAppointmentsWeek(): List<DayCount>
+
+    @GET("/stats/inpatient-week")
+    suspend fun getInpatientWeek(): List<DayCount>
+
+    data class DayCount(
+        val date: String, // "2024-06-01"
+        val count: Int
+    )
+
     data class UploadPhotosResponse(val paths: List<String>)
 
     data class RecordCreate(
