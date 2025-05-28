@@ -417,6 +417,11 @@ interface ApiService {
         val message: String
     )
 
+    @POST("users/send-key")
+    suspend fun sendKeyToUser(@Body request: SendKeyRequest): Response<Any>
+
+    data class SendKeyRequest(val user_id: Int)
+
     data class DecryptKeyRequest(val encrypted_key: String)
     data class DecryptKeyResponse(val plain_key: String)
     data class EncryptKeyRequest(val plain_key: String)

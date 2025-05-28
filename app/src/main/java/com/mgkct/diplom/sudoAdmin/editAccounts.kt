@@ -37,7 +37,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.ui.platform.LocalContext
-import com.mgkct.diplom.sendEmail
 import kotlinx.coroutines.delay
 
 class EditAccountsActivity : ComponentActivity() {
@@ -247,105 +246,144 @@ fun AddOrEditUserDialog(
     onDismiss: () -> Unit,
     onSaveUser: (ApiService.User) -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var key by remember { mutableStateOf(user?.key ?: "") }
+    var isKeyDecrypted by remember { mutableStateOf(user == null) }
+    var isLoading by remember { mutableStateOf(false) }
     var fullName by remember { mutableStateOf(user?.fullName ?: "") }
     var email by remember { mutableStateOf(user?.email ?: "") }
     var address by remember { mutableStateOf(user?.address ?: "") }
     var role by remember { mutableStateOf(user?.role ?: "user") }
-    var expanded by remember { mutableStateOf(false) } // Состояние для раскрытия меню
-    val roles = listOf("user", "admin", "doctor", "main-doctor") // Доступные роли
+    var expanded by remember { mutableStateOf(false) }
+    val roles = listOf("user", "admin", "doctor", "main-doctor")
     var medCenterId by remember { mutableStateOf(user?.medCenterId?.toString() ?: "") }
+    val context = LocalContext.current
+
+    // Расшифровка ключа при открытии диалога для редактирования
+    LaunchedEffect(user) {
+        if (user != null && user.key != null && !isKeyDecrypted) {
+            isLoading = true
+            try {
+                val response = RetrofitInstance.api.decryptKey(ApiService.DecryptKeyRequest(user.key))
+                key = response.plain_key
+                isKeyDecrypted = true
+            } catch (e: Exception) {
+                key = "Ошибка расшифровки"
+            }
+            isLoading = false
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (user == null) "Добавить пользователя" else "Редактировать пользователя") },
         text = {
-            Column {
-                OutlinedTextField(
-                    value = key,
-                    onValueChange = { key = it },
-                    label = { Text("Ключ лицензии") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = { Text("ФИО") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("Адрес") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+            if (isLoading) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column {
                     OutlinedTextField(
-                        modifier = Modifier.menuAnchor(),
-                        readOnly = true,
-                        value = role,
-                        onValueChange = {},
-                        label = { Text("Роль") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        }
+                        value = key,
+                        onValueChange = { key = it },
+                        label = { Text("Ключ лицензии") },
+                        modifier = Modifier.fillMaxWidth()
                     )
-
-                    ExposedDropdownMenu(
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = fullName,
+                        onValueChange = { fullName = it },
+                        label = { Text("ФИО") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = { Text("Адрес") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ExposedDropdownMenuBox(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        onExpandedChange = { expanded = it },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        roles.forEach { roleOption ->
-                            DropdownMenuItem(
-                                text = { Text(roleOption) },
-                                onClick = {
-                                    role = roleOption
-                                    expanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            modifier = Modifier.menuAnchor(),
+                            readOnly = true,
+                            value = role,
+                            onValueChange = {},
+                            label = { Text("Роль") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            roles.forEach { roleOption ->
+                                DropdownMenuItem(
+                                    text = { Text(roleOption) },
+                                    onClick = {
+                                        role = roleOption
+                                        expanded = false
+                                    }
+                                )
+                            }
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = medCenterId,
+                        onValueChange = { medCenterId = it },
+                        label = { Text("Айди центра") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = medCenterId,
-                    onValueChange = { medCenterId = it },
-                    label = { Text("Айди центра") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val newUser = ApiService.User(
-                        id = user?.id ?: 0,
-                        key = key,
-                        fullName = fullName,
-                        email = email,
-                        address = address,
-                        role = role,
-                        medCenterId = medCenterId.toIntOrNull(),
-                        tgId = user?.tgId // Сохраняем существующий tgId при редактировании
-                    )
-                    onSaveUser(newUser)
-                }
+                    coroutineScope.launch {
+                        var encryptedKey = key
+                        if (!isLoading) {
+                            try {
+                                // Если это новый пользователь или ключ был изменён, шифруем
+                                if (user == null || user.key != key) {
+                                    val response = RetrofitInstance.api.encryptKey(ApiService.EncryptKeyRequest(key))
+                                    encryptedKey = response.encrypted_key
+                                }
+                            } catch (e: Exception) {
+                                // Можно показать ошибку, если нужно
+                            }
+                            val newUser = ApiService.User(
+                                id = user?.id ?: 0,
+                                key = encryptedKey,
+                                fullName = fullName,
+                                email = email,
+                                address = address,
+                                role = role,
+                                medCenterId = medCenterId.toIntOrNull(),
+                                tgId = user?.tgId
+                            )
+                            onSaveUser(newUser)
+                        }
+                    }
+                },
+                enabled = !isLoading
             ) {
                 Text("Сохранить")
             }
@@ -363,7 +401,7 @@ fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.Us
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    var isSendingEnabled by remember { mutableStateOf(true) } // Флаг для кулдауна
+    var isSendingEnabled by remember { mutableStateOf(true) }
 
     Card(
         modifier = Modifier
@@ -381,7 +419,10 @@ fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.Us
             ) {
                 Column {
                     Text("ФИО: ${user.fullName}", style = MaterialTheme.typography.titleMedium)
-                    Text("Ключ: ${"*".repeat(user.key?.length ?: 0)}", style = MaterialTheme.typography.bodyMedium)
+                    val keyShort = user.key?.let {
+                        if (it.length > 12) "${it.take(6)}...${it.takeLast(6)}" else it
+                    } ?: ""
+                    Text("Ключ: $keyShort", style = MaterialTheme.typography.bodyMedium)
                     Text("Email: ${user.email}", style = MaterialTheme.typography.bodyMedium)
                     Text("Адрес: ${user.address}", style = MaterialTheme.typography.bodyMedium)
                     Text("Роль: ${user.role}", style = MaterialTheme.typography.bodyMedium)
@@ -400,17 +441,23 @@ fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.Us
                             if (isSendingEnabled) {
                                 coroutineScope.launch {
                                     try {
-                                        sendEmail(user.email ?: "Email не найден", user.key ?: "Ключ не найден")
-                                        snackbarHostState.showSnackbar(
-                                            "Письмо успешно отправлено на ${user.email}",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        // Активируем кулдаун
-                                        isSendingEnabled = false
-                                        // Через 7 секунд снова разрешаем отправку
-                                        coroutineScope.launch(Dispatchers.Main) {
-                                            delay(7000)
-                                            isSendingEnabled = true
+                                        // Вызов на бэкенд для отправки ключа на email
+                                        val response = RetrofitInstance.api.sendKeyToUser(ApiService.SendKeyRequest(user.id))
+                                        if (response.isSuccessful) {
+                                            snackbarHostState.showSnackbar(
+                                                "Письмо успешно отправлено на ${user.email}",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                            isSendingEnabled = false
+                                            coroutineScope.launch(Dispatchers.Main) {
+                                                delay(7000)
+                                                isSendingEnabled = true
+                                            }
+                                        } else {
+                                            snackbarHostState.showSnackbar(
+                                                "Ошибка при отправке письма: ${response.errorBody()?.string() ?: "Неизвестная ошибка"}",
+                                                duration = SnackbarDuration.Long
+                                            )
                                         }
                                     } catch (e: Exception) {
                                         snackbarHostState.showSnackbar(
@@ -438,7 +485,6 @@ fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.Us
                     }
                 }
             }
-            // Добавляем SnackbarHost для этого элемента
             SnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier.fillMaxWidth()
