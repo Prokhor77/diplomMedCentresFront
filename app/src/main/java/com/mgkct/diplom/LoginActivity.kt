@@ -68,6 +68,7 @@ import com.mgkct.diplom.doctor.ManageInpCareFromDocScreen
 import com.mgkct.diplom.doctor.ManageTalonsScreen
 import com.mgkct.diplom.doctor.SearchEMCScreen
 import com.mgkct.diplom.tg.TgAccBindingScreen
+import com.mgkct.diplom.user.FeedBackShowScreen
 import com.mgkct.diplom.user.MainUserScreen
 import com.mgkct.diplom.user.ManageMyRecordsScreen
 import com.mgkct.diplom.user.MyHistoryScreen
@@ -86,6 +87,7 @@ class LoginActivity : ComponentActivity() {
                 composable("user") { MainUserScreen(navController) }
                 composable("login_screen") { LoginScreen(navController) }
                 composable("user_history") { MyHistoryScreen(navController) }
+                composable("feedBackShow") { FeedBackShowScreen(navController) }
                 composable("tgBind") { TgAccBindingScreen(navController) }
                 composable("user_manageTalon") { ManageMyRecordsScreen(navController) }
                 composable("edit_accounts") { EditAccountsScreen(navController) }

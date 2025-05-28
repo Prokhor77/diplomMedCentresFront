@@ -310,6 +310,39 @@ interface ApiService {
         val active: String = "in_progress"
     )
 
+
+    @GET("/med-centers/with-rating")
+    suspend fun getMedCentersWithRating(): List<MedCenterWithRating>
+
+    data class MedCenterWithRating(
+        @SerializedName("idCenter") val id: Int,
+        @SerializedName("centerName") val name: String,
+        @SerializedName("centerAddress") val address: String,
+        @SerializedName("centerNumber") val phone: String,
+        @SerializedName("average_rating") val averageRating: Double?
+    )
+
+    @GET("/med-centers/{center_id}/doctors/with-rating")
+    suspend fun getDoctorsWithRating(@Path("center_id") centerId: Int): List<DoctorWithRating>
+
+    data class DoctorWithRating(
+        @SerializedName("doctorId") val id: Int,
+        @SerializedName("fullName") val fullName: String,
+        @SerializedName("work_type") val workType: String?,
+        @SerializedName("category") val category: String?,
+        @SerializedName("average_rating") val averageRating: Double?
+    )
+
+    @GET("/doctors/{doctor_id}/feedbacks")
+    suspend fun getDoctorFeedbacks(@Path("doctor_id") doctorId: Int): List<DoctorFeedback>
+
+    data class DoctorFeedback(
+        val id: Int,
+        val grade: Int,
+        val description: String,
+        val userFullName: String
+    )
+
     @GET("/stats/inpatient-patients-count")
     suspend fun getInpatientPatientsCount(@Query("med_center_id") medCenterId: Int): CountResponse
 
