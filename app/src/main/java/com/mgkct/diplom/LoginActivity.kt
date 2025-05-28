@@ -65,6 +65,7 @@ import com.mgkct.diplom.Admin.ReportsFromAdminScreen
 import com.mgkct.diplom.Admin.UserReportScreen
 import com.mgkct.diplom.SudoAdmin.EditAccountsScreen
 import com.mgkct.diplom.SudoAdmin.EditAgencyScreen
+import com.mgkct.diplom.SudoAdmin.ReportFromSudoAdmScreen
 import com.mgkct.diplom.doctor.MainDoctorScreen
 import com.mgkct.diplom.doctor.ManageInpCareFromDocScreen
 import com.mgkct.diplom.doctor.ManageTalonsScreen
@@ -104,6 +105,7 @@ class LoginActivity : ComponentActivity() {
                 composable("main_admin") { MainAdminScreen(navController) }
                 composable("reports_admin") { ReportsFromAdminScreen(navController) }
                 composable("reports_admin_for_user") { UserReportScreen(navController) }
+                composable("reports_from_sudo") { ReportFromSudoAdmScreen() }
                 composable("manageTalons") { ManageTalonsScreen(navController) }
                 composable("emc_search") {  SearchEMCScreen(navController = navController) }
                 composable("doctor_screen") { MainDoctorScreen(navController) }

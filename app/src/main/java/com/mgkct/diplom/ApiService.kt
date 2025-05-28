@@ -417,6 +417,18 @@ interface ApiService {
         val message: String
     )
 
+    @POST("/reports/generate-all")
+    suspend fun generateAllCentersReport(@Body request: AllCentersReportRequest): Response<ReportResponse>
+
+    data class AllCentersReportRequest(
+        val period_days: Int,
+        val email: String,
+        val format: String = "docx"
+    )
+
+    @POST("/reports/generate-personal")
+    suspend fun generatePersonalReport(@Body request: AllCentersReportRequest): Response<ReportResponse>
+
     data class UserEmailResponse(
         val email: String
     )
