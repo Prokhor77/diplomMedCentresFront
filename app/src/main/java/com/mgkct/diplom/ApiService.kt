@@ -397,6 +397,27 @@ interface ApiService {
     @GET("/stats/inpatient-week")
     suspend fun getInpatientWeek(): List<DayCount>
 
+    data class ReportRequest(
+        val med_center_id: Int,
+        val period_days: Int,  // 1, 7, or 30
+        val email: String,
+        val format: String = "docx"  // "docx" or "pdf"
+    )
+
+    data class ReportResponse(
+        val message: String
+    )
+
+    data class UserEmailResponse(
+        val email: String
+    )
+
+    @POST("reports/generate")
+    suspend fun generateReport(@Body request: com.mgkct.diplom.Admin.ReportRequest): Response<ReportResponse>
+
+    @GET("users/{userId}/email")
+    suspend fun getUserEmail(@Path("userId") userId: Int): Response<UserEmailResponse>
+
     data class DayCount(
         val date: String, // "2024-06-01"
         val count: Int

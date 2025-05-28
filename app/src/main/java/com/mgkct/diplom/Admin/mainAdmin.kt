@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Timelapse
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -67,6 +68,7 @@ import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
 import com.mgkct.diplom.Admin.EditDocWorkTimeScreen
 import com.mgkct.diplom.Admin.FeedBackEdit
 import com.mgkct.diplom.Admin.ManageInpatientCareScreen
+import com.mgkct.diplom.Admin.ReportsFromAdminScreen
 import com.mgkct.diplom.ApiService
 import com.mgkct.diplom.LoginActivity
 import com.mgkct.diplom.R
@@ -122,6 +124,7 @@ class MainAdminActivity : ComponentActivity() {
             val navController = rememberNavController()
             NavHost(navController, startDestination = "main_admin") {
                 composable("main_admin") { MainAdminScreen(navController) }
+                composable("reports_admin") { ReportsFromAdminScreen(navController) }
                 // Добавьте остальные экраны по необходимости
             }
         }
@@ -222,6 +225,13 @@ fun MainAdminScreen(navController: NavController) {
                                 onClick = { navController.navigate("editDocWorkTime") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Timelapse, contentDescription = "Управление рабочим временем")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Отчеты") },
+                                onClick = { navController.navigate("reports_admin") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Work, contentDescription = "Отчеты")
                                 }
                             )
                             val context = LocalContext.current
