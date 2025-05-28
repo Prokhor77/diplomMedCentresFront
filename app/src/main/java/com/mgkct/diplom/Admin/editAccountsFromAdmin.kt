@@ -241,7 +241,10 @@ fun AddOrEditUserDialog(
     onDismiss: () -> Unit,
     onSaveUser: (ApiService.User) -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var key by remember { mutableStateOf("") }
+    var isKeyDecrypted by remember { mutableStateOf(user == null) }
+    var isLoading by remember { mutableStateOf(false) }
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
@@ -262,6 +265,18 @@ fun AddOrEditUserDialog(
         workType = user?.work_type ?: ""
         experience = user?.experience ?: ""
         category = user?.category ?: ""
+        // Расшифровка ключа
+        if (user != null && user.key != null && !isKeyDecrypted) {
+            isLoading = true
+            try {
+                val response = RetrofitInstance.api.decryptKey(ApiService.DecryptKeyRequest(user.key))
+                key = response.plain_key
+                isKeyDecrypted = true
+            } catch (e: Exception) {
+                key = "Ошибка расшифровки"
+            }
+            isLoading = false
+        }
     }
 
     Box(
@@ -274,97 +289,103 @@ fun AddOrEditUserDialog(
             onDismissRequest = onDismiss,
             title = { Text(if (user == null) "Добавить пользователя" else "Редактировать пользователя") },
             text = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 500.dp)
-                ) {
-                    Column(
+                if (isLoading) {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    Box(
                         modifier = Modifier
-                            .verticalScroll(rememberScrollState())
                             .fillMaxWidth()
+                            .heightIn(max = 500.dp)
                     ) {
-                        OutlinedTextField(
-                            value = key,
-                            onValueChange = { key = it },
-                            label = { Text("Ключ лицензии") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = fullName,
-                            onValueChange = { fullName = it },
-                            label = { Text("ФИО") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text("Email") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = address,
-                            onValueChange = { address = it },
-                            label = { Text("Адрес") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        ExposedDropdownMenuBox(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = it },
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .verticalScroll(rememberScrollState())
+                                .fillMaxWidth()
                         ) {
                             OutlinedTextField(
-                                modifier = Modifier.menuAnchor(),
-                                readOnly = true,
-                                value = role,
-                                onValueChange = {},
-                                label = { Text("Роль") },
-                                trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                                }
+                                value = key,
+                                onValueChange = { key = it },
+                                label = { Text("Ключ лицензии") },
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            ExposedDropdownMenu(
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = fullName,
+                                onValueChange = { fullName = it },
+                                label = { Text("ФИО") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = email,
+                                onValueChange = { email = it },
+                                label = { Text("Email") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = address,
+                                onValueChange = { address = it },
+                                label = { Text("Адрес") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            ExposedDropdownMenuBox(
                                 expanded = expanded,
-                                onDismissRequest = { expanded = false }
+                                onExpandedChange = { expanded = it },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                roles.forEach { roleOption ->
-                                    DropdownMenuItem(
-                                        text = { Text(roleOption) },
-                                        onClick = {
-                                            role = roleOption
-                                            expanded = false
-                                        }
-                                    )
+                                OutlinedTextField(
+                                    modifier = Modifier.menuAnchor(),
+                                    readOnly = true,
+                                    value = role,
+                                    onValueChange = {},
+                                    label = { Text("Роль") },
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                    }
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    roles.forEach { roleOption ->
+                                        DropdownMenuItem(
+                                            text = { Text(roleOption) },
+                                            onClick = {
+                                                role = roleOption
+                                                expanded = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        if (role == "doctor") {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedTextField(
-                                value = workType,
-                                onValueChange = { workType = it },
-                                label = { Text("Профилизация") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = experience,
-                                onValueChange = { experience = it },
-                                label = { Text("Опыт работы") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = category,
-                                onValueChange = { category = it },
-                                label = { Text("Категория") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            if (role == "doctor") {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(
+                                    value = workType,
+                                    onValueChange = { workType = it },
+                                    label = { Text("Профилизация") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = experience,
+                                    onValueChange = { experience = it },
+                                    label = { Text("Опыт работы") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = category,
+                                    onValueChange = { category = it },
+                                    label = { Text("Категория") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }
@@ -372,21 +393,36 @@ fun AddOrEditUserDialog(
             confirmButton = {
                 Button(
                     onClick = {
-                        val newUser = ApiService.User(
-                            id = user?.id ?: 0,
-                            key = key,
-                            fullName = fullName,
-                            email = email,
-                            address = address,
-                            role = role,
-                            medCenterId = currentMedCenterId,
-                            tgId = user?.tgId,
-                            work_type = if (role == "doctor") workType else null,
-                            experience = if (role == "doctor") experience else null,
-                            category = if (role == "doctor") category else null
-                        )
-                        onSaveUser(newUser)
-                    }
+                        coroutineScope.launch {
+                            var encryptedKey = key
+                            if (!isLoading) {
+                                try {
+                                    // Если это новый пользователь или ключ был изменён, шифруем
+                                    if (user == null || user.key != key) {
+                                        val response = RetrofitInstance.api.encryptKey(ApiService.EncryptKeyRequest(key))
+                                        encryptedKey = response.encrypted_key
+                                    }
+                                } catch (e: Exception) {
+                                    // Можно показать ошибку, если нужно
+                                }
+                                val newUser = ApiService.User(
+                                    id = user?.id ?: 0,
+                                    key = encryptedKey,
+                                    fullName = fullName,
+                                    email = email,
+                                    address = address,
+                                    role = role,
+                                    medCenterId = currentMedCenterId,
+                                    tgId = user?.tgId,
+                                    work_type = if (role == "doctor") workType else null,
+                                    experience = if (role == "doctor") experience else null,
+                                    category = if (role == "doctor") category else null
+                                )
+                                onSaveUser(newUser)
+                            }
+                        }
+                    },
+                    enabled = !isLoading
                 ) {
                     Text("Сохранить")
                 }

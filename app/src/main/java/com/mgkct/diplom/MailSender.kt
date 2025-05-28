@@ -17,7 +17,7 @@ suspend fun sendEmail(recipientEmail: String, key: String) = withContext(Dispatc
     val props = Properties().apply {
         put("mail.smtp.auth", "true")
         put("mail.smtp.starttls.enable", "true")
-        put("mail.smtp.host", "smtp.yandex.com")
+        put("mail.smtp.host", "smtp.yandex.ru") // Исправлено!
         put("mail.smtp.port", "587")
     }
 

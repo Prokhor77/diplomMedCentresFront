@@ -417,6 +417,17 @@ interface ApiService {
         val message: String
     )
 
+    data class DecryptKeyRequest(val encrypted_key: String)
+    data class DecryptKeyResponse(val plain_key: String)
+    data class EncryptKeyRequest(val plain_key: String)
+    data class EncryptKeyResponse(val encrypted_key: String)
+
+    @POST("decrypt-key/")
+    suspend fun decryptKey(@Body request: DecryptKeyRequest): DecryptKeyResponse
+
+    @POST("encrypt-key/")
+    suspend fun encryptKey(@Body request: EncryptKeyRequest): EncryptKeyResponse
+
     @POST("/reports/generate-all")
     suspend fun generateAllCentersReport(@Body request: AllCentersReportRequest): Response<ReportResponse>
 
