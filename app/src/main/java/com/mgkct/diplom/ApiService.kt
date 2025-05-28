@@ -380,6 +380,17 @@ interface ApiService {
     @POST("records/upload-photos")
     suspend fun uploadPhotos(@Part files: List<MultipartBody.Part>): Response<UploadPhotosResponse>
 
+    @GET("/stats/appointments-month")
+    suspend fun getAppointmentsMonth(
+        @Query("med_center_id") medCenterId: Int
+    ): CountResponse
+
+    @GET("/stats/appointments-by-date")
+    suspend fun getAppointmentsByDate(
+        @Query("med_center_id") medCenterId: Int,
+        @Query("date") date: String
+    ): CountResponse
+
     data class UploadPhotosResponse(val paths: List<String>)
 
     data class RecordCreate(
