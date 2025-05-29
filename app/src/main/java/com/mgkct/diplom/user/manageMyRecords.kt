@@ -131,7 +131,7 @@ fun ManageMyRecordsScreen(navController: NavController) {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp),
+                            .heightIn(max = 600.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(filteredDoctors) { doctor ->
