@@ -56,6 +56,8 @@ import java.io.IOException
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.platform.LocalContext
 import com.mgkct.diplom.Admin.EditAccountsFromAdminScreen
 import com.mgkct.diplom.Admin.EditDocWorkTimeScreen
@@ -75,6 +77,8 @@ import com.mgkct.diplom.user.FeedBackShowScreen
 import com.mgkct.diplom.user.MainUserScreen
 import com.mgkct.diplom.user.ManageMyRecordsScreen
 import com.mgkct.diplom.user.MyHistoryScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 
 class LoginActivity : ComponentActivity() {
@@ -124,19 +128,16 @@ class LoginActivity : ComponentActivity() {
     }
 }
 
-
 @Composable
 fun LoginScreen(navController: NavController) {
-    var licenseKey by remember { mutableStateOf("") } // Состояние для лицензионного ключа
-    var errorMessage by remember { mutableStateOf<String?>(null) } // Сообщение об ошибке
-    var isLoading by remember { mutableStateOf(false) } // Состояние загрузки
+    var licenseKey by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Фоновое изображение
         Image(
             painter = painterResource(id = R.drawable.background_image),
             contentDescription = "Фон",
@@ -144,7 +145,6 @@ fun LoginScreen(navController: NavController) {
             modifier = Modifier.fillMaxSize()
         )
 
-        // Основной контент
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -170,7 +170,6 @@ fun LoginScreen(navController: NavController) {
                 fontSize = 20.sp
             )
 
-            // Карточка для формы входа
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -191,7 +190,6 @@ fun LoginScreen(navController: NavController) {
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Поле для ввода лицензионного ключа
                     OutlinedTextField(
                         value = licenseKey,
                         onValueChange = { licenseKey = it },
@@ -201,9 +199,8 @@ fun LoginScreen(navController: NavController) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
-                    // Отображение сообщения об ошибке
                     errorMessage?.let {
                         Text(text = it, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(8.dp))
@@ -211,75 +208,112 @@ fun LoginScreen(navController: NavController) {
 
                     val context = LocalContext.current
 
-                    Button(
-                        onClick = {
-                            if (licenseKey.isBlank()) {
-                                errorMessage = "Пожалуйста, введите лицензионный ключ"
-                                return@Button
-                            }
-
-                            coroutineScope.launch {
-                                isLoading = true
-                                errorMessage = null
-                                try {
-                                    val response = RetrofitInstance.api.loginWithKey(
-                                        ApiService.LicenseKeyRequest(licenseKey)
-                                    )
-
-                                    Log.d("BackendResponse", "Response: $response")
-
-                                    val sharedPref = context.getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
-                                    with(sharedPref.edit()) {
-                                        putString("role", response.role ?: "")
-                                        putInt("userId", response.userId ?: 0)
-                                        putInt("medCenterId", response.medCenterId ?: 0)
-                                        putString("fullName", response.full_name ?: "")
-                                        putString("centerName", response.center_name ?: "")
-                                        commit()
+                    // Кастомная кнопка без ripple-эффекта
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                            .height(48.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                if (isLoading) return@clickable
+                                if (licenseKey.isBlank()) {
+                                    errorMessage = "Пожалуйста, введите лицензионный ключ"
+                                    return@clickable
+                                }
+                                coroutineScope.launch {
+                                    isLoading = true
+                                    errorMessage = null
+                                    try {
+                                        val response = withContext(Dispatchers.IO) {
+                                            RetrofitInstance.api.loginWithKey(ApiService.LicenseKeyRequest(licenseKey))
+                                        }
+                                        // Здесь уже главный поток!
+                                        val sharedPref = context.getSharedPreferences(LoginActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                                        with(sharedPref.edit()) {
+                                            putString("role", response.role ?: "")
+                                            putInt("userId", response.userId ?: 0)
+                                            putInt("medCenterId", response.medCenterId ?: 0)
+                                            putString("fullName", response.full_name ?: "")
+                                            putString("centerName", response.center_name ?: "")
+                                            commit()
+                                        }
+                                        when (response.role) {
+                                            "sudo-admin" -> navController.navigate("main_sudo_admin")
+                                            "admin" -> navController.navigate("main_admin")
+                                            "doctor" -> navController.navigate("doctor")
+                                            "user" -> navController.navigate("user")
+                                            else -> errorMessage = "Неизвестная роль: ${response.role}"
+                                        }
+                                    } catch (e: HttpException) {
+                                        errorMessage = "Ошибка сервера: ${e.code()}"
+                                    } catch (e: IOException) {
+                                        errorMessage = "Ошибка сети: ${e.localizedMessage ?: "Проверьте подключение"}"
+                                    } catch (e: Exception) {
+                                        errorMessage = "Ошибка: ${e.localizedMessage ?: "Неизвестная ошибка"}"
+                                    } finally {
+                                        isLoading = false
                                     }
-
-                                    // Добавим логирование сразу после сохранения
-                                    Log.d("LoginScreen", "Saved medCenterId: ${response.medCenterId}")
-                                    Log.d("LoginScreen", "Saved fullName: ${response.full_name}")
-                                    Log.d("LoginScreen", "Saved centerName: ${response.center_name}")
-                                    when (response.role) {
-                                        "sudo-admin" -> navController.navigate("main_sudo_admin")
-                                        "admin" -> navController.navigate("main_admin")
-                                        "doctor" -> navController.navigate("doctor")
-                                        "user" -> navController.navigate("user")
-                                        else -> errorMessage = "Неизвестная роль: ${response.role}"
-                                    }
-                                } catch (e: HttpException) {
-                                    val errorBody = e.response()?.errorBody()?.string()
-                                    Log.e("BackendError", "HTTP error: ${e.code()}, $errorBody")
-                                    errorMessage = "Ошибка сервера: ${e.code()}"
-                                } catch (e: IOException) {
-                                    Log.e("BackendError", "Network error: ${e.message}")
-                                    errorMessage = "Ошибка сети: ${e.localizedMessage ?: "Проверьте подключение"}"
-                                } catch (e: Exception) {
-                                    Log.e("BackendError", "Unexpected error: ${e.stackTraceToString()}")
-                                    errorMessage = "Ошибка: ${e.localizedMessage ?: "Неизвестная ошибка"}"
-                                } finally {
-                                    isLoading = false
                                 }
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                            .then(
+                                Modifier
+                                    .padding(top = 8.dp)
+                                    .align(Alignment.CenterHorizontally)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        if (isLoading) {
-                            CircularProgressIndicator()
-                        } else {
-                            Text("Войти")
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .fillMaxSize()
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                } else {
+                                    Text(
+                                        "Войти",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                }
+                            }
                         }
                     }
-
                 }
             }
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "© Прохор Одинец 65 ТП, 2025",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Все права защищены",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
     }
 }
 
-// Предварительный просмотр экрана входа
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {

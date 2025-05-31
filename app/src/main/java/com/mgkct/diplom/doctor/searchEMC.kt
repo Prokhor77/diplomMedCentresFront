@@ -98,7 +98,7 @@ fun SearchEMCScreen(navController: NavController) {
                         value = userSearchQuery,
                         onValueChange = {
                             userSearchQuery = it
-                            expanded = it.length > 2 && userSearchResults.isNotEmpty()
+                            expanded = it.length > 1 && userSearchResults.isNotEmpty()
                             selectedUser = null
                             records = emptyList()
                             error = null
@@ -123,31 +123,33 @@ fun SearchEMCScreen(navController: NavController) {
                         }
                     )
 
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        userSearchResults.forEach { user ->
-                            DropdownMenuItem(
-                                text = { Text(user.fullName) },
-                                onClick = {
-                                    selectedUser = user
-                                    userSearchQuery = user.fullName
-                                    expanded = false
-                                    coroutineScope.launch {
-                                        isLoading = true
-                                        error = null
-                                        try {
-                                            records = RetrofitInstance.api.getPatientRecords(user.id)
-                                        } catch (e: Exception) {
-                                            error = e.message ?: "Ошибка загрузки записей"
-                                            records = emptyList()
-                                        } finally {
-                                            isLoading = false
+                    if (expanded && userSearchResults.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = true,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            userSearchResults.forEach { user ->
+                                DropdownMenuItem(
+                                    text = { Text(user.fullName) },
+                                    onClick = {
+                                        selectedUser = user
+                                        userSearchQuery = user.fullName
+                                        expanded = false
+                                        coroutineScope.launch {
+                                            isLoading = true
+                                            error = null
+                                            try {
+                                                records = RetrofitInstance.api.getPatientRecords(user.id)
+                                            } catch (e: Exception) {
+                                                error = e.message ?: "Ошибка загрузки записей"
+                                                records = emptyList()
+                                            } finally {
+                                                isLoading = false
+                                            }
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }

@@ -184,6 +184,23 @@ fun MainUserScreen(navController: NavController) {
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    educationStep = 0
+                    showEducation = true
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+                modifier = Modifier
+                    .padding(2.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.HelpOutline,
+                    contentDescription = "Обучение"
+                )
+            }
         }
     ) { padding ->
         Box(
@@ -363,7 +380,7 @@ fun MainUserScreen(navController: NavController) {
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(top = 18.dp, end = 20.dp), // подбери значения под свой Toolbar
+                                    .padding(top = 10.dp, end = 15.dp),
                                 horizontalAlignment = Alignment.End
                             ) {
                                 Icon(

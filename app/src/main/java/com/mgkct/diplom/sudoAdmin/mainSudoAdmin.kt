@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAlert
 import androidx.compose.material.icons.filled.AddBusiness
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.ExitToApp
@@ -191,6 +192,16 @@ fun MainSudoAdminScreen(navController: NavController) {
                                 onClick = { navController.navigate("reports_from_sudo") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Assessment, contentDescription = "Отчёты")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Привязать TG Аккаунт") },
+                                onClick = {
+                                    menuExpanded = false
+                                    navController.navigate("tgBind")
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AddAlert, contentDescription = "Привязать TG Аккаунт")
                                 }
                             )
                             val context = LocalContext.current // Объявляем контекст один раз в Composable

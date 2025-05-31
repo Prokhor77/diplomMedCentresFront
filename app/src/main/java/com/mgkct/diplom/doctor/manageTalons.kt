@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +47,7 @@ fun ManageTalonsScreen(navController: NavController) {
     var selectedPatient by remember { mutableStateOf<ApiService.UserSearchResult?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     var patientReason by remember { mutableStateOf("") }
+    var patientDropdownExpanded by remember { mutableStateOf(false) }
 
     // Поиск врача по ФИО
     LaunchedEffect(doctorQuery) {
@@ -53,7 +55,7 @@ fun ManageTalonsScreen(navController: NavController) {
             coroutineScope.launch {
                 try {
                     val allResults = RetrofitInstance.api.searchUsers(medCenterId, doctorQuery)
-                    doctorResults = allResults.filter { it.role == "doctor" } // фильтрация по роли
+                    doctorResults = allResults.filter { it.role == "doctor" }
                 } catch (e: Exception) {
                     doctorResults = emptyList()
                 }
@@ -64,8 +66,8 @@ fun ManageTalonsScreen(navController: NavController) {
     }
 
     // Поиск пациента по ФИО
-    LaunchedEffect(patientQuery) {
-        if (patientQuery.length > 2 && showPatientDialog) {
+    LaunchedEffect(patientQuery, showPatientDialog) {
+        if (patientQuery.length > 2 && showPatientDialog && selectedPatient == null) {
             coroutineScope.launch {
                 try {
                     patientResults = RetrofitInstance.api.searchUsers(medCenterId, patientQuery)
@@ -73,7 +75,7 @@ fun ManageTalonsScreen(navController: NavController) {
                     patientResults = emptyList()
                 }
             }
-        } else {
+        } else if (selectedPatient == null) {
             patientResults = emptyList()
         }
     }
@@ -89,7 +91,6 @@ fun ManageTalonsScreen(navController: NavController) {
                         }
                     }
                 )
-                // Шапка с адресом и названием медцентра
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -126,7 +127,7 @@ fun ManageTalonsScreen(navController: NavController) {
             )
 
             Column(modifier = Modifier.padding(16.dp)) {
-                // Поиск врача показываем только если врач не выбран
+                // Поиск врача
                 if (selectedDoctor == null) {
                     ExposedDropdownMenuBox(
                         expanded = doctorResults.isNotEmpty(),
@@ -161,7 +162,6 @@ fun ManageTalonsScreen(navController: NavController) {
                         }
                     }
                 } else {
-                    // Кнопка "Сменить врача"
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -196,7 +196,7 @@ fun ManageTalonsScreen(navController: NavController) {
                     }
                 }
 
-                // Список свободных слотов с кнопкой "Записать пациента"
+                // Список свободных слотов
                 if (freeSlots.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Свободное время:")
@@ -215,9 +215,9 @@ fun ManageTalonsScreen(navController: NavController) {
                                     Button(
                                         onClick = {
                                             selectedSlot = slot
-                                            // Открываем диалог поиска пациента
                                             patientQuery = ""
                                             patientResults = emptyList()
+                                            selectedPatient = null
                                             showPatientDialog = true
                                         },
                                         modifier = Modifier.padding(top = 8.dp)
@@ -236,16 +236,62 @@ fun ManageTalonsScreen(navController: NavController) {
     // Диалог поиска пациента и запись на слот
     if (showPatientDialog && selectedSlot != null) {
         AlertDialog(
-            onDismissRequest = { showPatientDialog = false },
+            onDismissRequest = {
+                showPatientDialog = false
+                selectedPatient = null
+                patientQuery = ""
+                patientResults = emptyList()
+                patientReason = ""
+            },
             title = { Text("Поиск пациента") },
             text = {
                 Column {
-                    OutlinedTextField(
-                        value = patientQuery,
-                        onValueChange = { patientQuery = it },
-                        label = { Text("ФИО пациента") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // Новый поиск пациента в стиле ExposedDropdownMenuBox
+                    ExposedDropdownMenuBox(
+                        expanded = patientResults.isNotEmpty() && selectedPatient == null && patientQuery.length > 2,
+                        onExpandedChange = { patientDropdownExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = if (selectedPatient != null) selectedPatient?.fullName ?: "" else patientQuery,
+                            onValueChange = {
+                                patientQuery = it
+                                selectedPatient = null
+                            },
+                            label = { Text("ФИО пациента") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            singleLine = true,
+                            trailingIcon = {
+                                if ((selectedPatient != null && (selectedPatient?.fullName?.isNotEmpty() == true)) || patientQuery.isNotEmpty()) {
+                                    IconButton(onClick = {
+                                        patientQuery = ""
+                                        selectedPatient = null
+                                        patientResults = emptyList()
+                                    }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                                    }
+                                }
+                            },
+                            enabled = selectedPatient == null
+                        )
+                        ExposedDropdownMenu(
+                            expanded = patientResults.isNotEmpty() && selectedPatient == null && patientQuery.length > 2,
+                            onDismissRequest = { patientDropdownExpanded = false }
+                        ) {
+                            patientResults.forEach { patient ->
+                                DropdownMenuItem(
+                                    text = { Text(patient.fullName) },
+                                    onClick = {
+                                        selectedPatient = patient
+                                        patientQuery = patient.fullName
+                                        patientResults = emptyList()
+                                        patientDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = patientReason,
@@ -253,19 +299,6 @@ fun ManageTalonsScreen(navController: NavController) {
                         label = { Text("Причина") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyColumn(modifier = Modifier.heightIn(max = 200.dp)) {
-                        items(patientResults) { patient ->
-                            val isSelected = patient == selectedPatient
-                            DropdownMenuItem(
-                                text = { Text(patient.fullName) },
-                                onClick = {
-                                    selectedPatient = patient
-                                },
-                                modifier = if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)) else Modifier
-                            )
-                        }
-                    }
                 }
             },
             confirmButton = {
@@ -284,7 +317,7 @@ fun ManageTalonsScreen(navController: NavController) {
                                     showPatientDialog = false
                                     selectedSlot = null
                                     selectedPatient = null
-                                    patientReason = "" // сброс причины
+                                    patientReason = ""
                                     focusManager.clearFocus()
                                     keyboardController?.hide()
                                     snackbarHostState.showSnackbar("Пациент успешно записан!")
@@ -306,6 +339,8 @@ fun ManageTalonsScreen(navController: NavController) {
                 Button(onClick = {
                     showPatientDialog = false
                     selectedPatient = null
+                    patientQuery = ""
+                    patientResults = emptyList()
                     patientReason = ""
                 }) {
                     Text("Отмена")

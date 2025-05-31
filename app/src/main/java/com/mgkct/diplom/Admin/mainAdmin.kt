@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AddAlert
 import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
@@ -239,6 +240,16 @@ fun MainAdminScreen(navController: NavController) {
                                 onClick = { navController.navigate("reports_admin_for_user") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Work, contentDescription = "Отчеты по пользователям")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Привязать TG Аккаунт") },
+                                onClick = {
+                                    expandedMenu = false
+                                    navController.navigate("tgBind")
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AddAlert, contentDescription = "Привязать TG Аккаунт")
                                 }
                             )
                             val context = LocalContext.current

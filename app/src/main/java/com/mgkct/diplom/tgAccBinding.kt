@@ -30,6 +30,7 @@ import androidx.navigation.NavHostController
 import com.mgkct.diplom.ApiService
 import com.mgkct.diplom.R
 import com.mgkct.diplom.RetrofitInstance
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,22 @@ fun TgAccBindingScreen(navController: NavHostController) {
     var tgId by remember { mutableStateOf<Int?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
+
+    LaunchedEffect(key1 = tgId) {
+        if (tgId == null) {
+            while (tgId == null) {
+                delay(2000) // опрашиваем каждые 3 секунды
+                try {
+                    val resp = RetrofitInstance.api.getUserTgId(userId)
+                    if (resp.tgId != null) {
+                        tgId = resp.tgId
+                        isLoading = false
+                        break
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
 
     // Получаем текущий Telegram ID пользователя
     LaunchedEffect(Unit) {

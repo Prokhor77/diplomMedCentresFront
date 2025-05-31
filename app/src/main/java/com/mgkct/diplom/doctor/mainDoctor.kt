@@ -33,6 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddAlert
 import androidx.compose.material.icons.filled.AddToQueue
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Book
@@ -293,6 +294,16 @@ fun MainDoctorScreen(navController: NavController) {
                                 onClick = { navController.navigate("manageTalons") },
                                 leadingIcon = {
                                     Icon(Icons.Default.Edit, contentDescription = "Выдача талона")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Привязать TG Аккаунт") },
+                                onClick = {
+                                    expandedMenu = false
+                                    navController.navigate("tgBind")
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.AddAlert, contentDescription = "Привязать TG Аккаунт")
                                 }
                             )
                             DropdownMenuItem(
