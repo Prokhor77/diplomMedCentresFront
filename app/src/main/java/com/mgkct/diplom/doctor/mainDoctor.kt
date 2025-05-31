@@ -500,7 +500,7 @@ fun AddAppointmentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Добавить запись на прием") },
+        title = { Text("Добавить запись на прием сегодня") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 ExposedDropdownMenuBox(

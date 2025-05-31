@@ -117,7 +117,6 @@ fun ManageMyRecordsScreen(navController: NavController) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Поиск врача и карточки всех врачей центра
                 if (selectedDoctor == null) {
-                    // Обычное текстовое поле без выпадающего списка
                     OutlinedTextField(
                         value = doctorQuery,
                         onValueChange = { doctorQuery = it },
@@ -128,38 +127,39 @@ fun ManageMyRecordsScreen(navController: NavController) {
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Все врачи центра:", style = MaterialTheme.typography.titleSmall)
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 600.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(filteredDoctors) { doctor ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedDoctor = doctor
-                                        doctorQuery = doctor.fullName
-                                        coroutineScope.launch {
-                                            doctorInfo = RetrofitInstance.api.getDoctorInfo(doctor.id)
-                                            freeSlots = RetrofitInstance.api.getDoctorFreeSlots(doctor.id)
-                                        }
-                                    },
-                                elevation = CardDefaults.cardElevation(2.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(doctor.fullName, style = MaterialTheme.typography.titleMedium)
-                                    // Отображаем специализацию и категорию из словаря doctorsInfo
-                                    val info = doctorsInfo[doctor.id]
-                                    Text(
-                                        "Специализация: ${info?.workType ?: "Не указана"}",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Text(
-                                        "Категория: ${info?.category ?: "Не указана"}",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+
+                    // Вот тут Box с weight(1f)
+                    Box(modifier = Modifier.weight(1f)) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredDoctors) { doctor ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedDoctor = doctor
+                                            doctorQuery = doctor.fullName
+                                            coroutineScope.launch {
+                                                doctorInfo = RetrofitInstance.api.getDoctorInfo(doctor.id)
+                                                freeSlots = RetrofitInstance.api.getDoctorFreeSlots(doctor.id)
+                                            }
+                                        },
+                                    elevation = CardDefaults.cardElevation(2.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(doctor.fullName, style = MaterialTheme.typography.titleMedium)
+                                        val info = doctorsInfo[doctor.id]
+                                        Text(
+                                            "Специализация: ${info?.workType ?: "Не указана"}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                        Text(
+                                            "Категория: ${info?.category ?: "Не указана"}",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
                                 }
                             }
                         }
