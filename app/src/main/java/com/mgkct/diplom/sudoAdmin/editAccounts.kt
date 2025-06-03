@@ -60,16 +60,27 @@ fun EditAccountsScreen(navController: NavController) {
     var showDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<ApiService.User?>(null) }
     var userToEdit by remember { mutableStateOf<ApiService.User?>(null) }
-    var refreshTrigger by remember { mutableStateOf(0) } // Добавляем триггер для обновления
+    var refreshTrigger by remember { mutableStateOf(0) }
     val usersList = remember { mutableStateListOf<ApiService.User>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(refreshTrigger) { // Добавляем refreshTrigger в зависимости
+    // Список медцентров
+    val medCenters = remember { mutableStateListOf<ApiService.MedicalCenter>() }
+
+    // Получаем пользователей и медцентры
+    LaunchedEffect(refreshTrigger) {
         try {
             val users = RetrofitInstance.api.getUsers()
             usersList.clear()
             usersList.addAll(users)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            val centers = RetrofitInstance.api.getMedicalCenters()
+            medCenters.clear()
+            medCenters.addAll(centers)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -151,6 +162,7 @@ fun EditAccountsScreen(navController: NavController) {
                         items(filteredUsers) { user ->
                             UserItem(
                                 user = user,
+                                medCenters = medCenters,
                                 onDelete = { showDeleteDialog = user },
                                 onEdit = { userToEdit = it }
                             )
@@ -165,6 +177,7 @@ fun EditAccountsScreen(navController: NavController) {
     if (showDialog || userToEdit != null) {
         AddOrEditUserDialog(
             user = userToEdit,
+            medCenters = medCenters,
             onDismiss = {
                 showDialog = false
                 userToEdit = null
@@ -186,7 +199,7 @@ fun EditAccountsScreen(navController: NavController) {
                             }
                             snackbarHostState.showSnackbar("Информация о пользователе ${user.fullName} обновлена")
                         }
-                        refreshTrigger++ // Обновляем данные после сохранения
+                        refreshTrigger++
                     } catch (e: Exception) {
                         e.printStackTrace()
                         snackbarHostState.showSnackbar("Ошибка при сохранении данных пользователя")
@@ -206,7 +219,7 @@ fun EditAccountsScreen(navController: NavController) {
                         RetrofitInstance.api.deleteUser(it.id)
                         usersList.remove(it)
                         snackbarHostState.showSnackbar("Пользователь ${it.fullName} был удален")
-                        refreshTrigger++ // Обновляем данные после удаления
+                        refreshTrigger++
                     } catch (e: Exception) {
                         e.printStackTrace()
                         snackbarHostState.showSnackbar("Ошибка при удалении пользователя")
@@ -243,6 +256,7 @@ fun ConfirmDeleteDialog(user: ApiService.User, onDismiss: () -> Unit, onConfirmD
 @Composable
 fun AddOrEditUserDialog(
     user: ApiService.User?,
+    medCenters: List<ApiService.MedicalCenter>,
     onDismiss: () -> Unit,
     onSaveUser: (ApiService.User) -> Unit
 ) {
@@ -256,7 +270,17 @@ fun AddOrEditUserDialog(
     var role by remember { mutableStateOf(user?.role ?: "user") }
     var expanded by remember { mutableStateOf(false) }
     val roles = listOf("user", "admin", "doctor", "main-doctor")
-    var medCenterId by remember { mutableStateOf(user?.medCenterId?.toString() ?: "") }
+
+    // Для выбора центра
+    var selectedCenterName by remember {
+        mutableStateOf(
+            medCenters.find { it.id == user?.medCenterId }?.name ?: ""
+        )
+    }
+    var medCenterId by remember {
+        mutableStateOf(user?.medCenterId?.toString() ?: "")
+    }
+
     val context = LocalContext.current
 
     // Расшифровка ключа при открытии диалога для редактирования
@@ -344,13 +368,39 @@ fun AddOrEditUserDialog(
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = medCenterId,
-                        onValueChange = { medCenterId = it },
-                        label = { Text("Айди центра") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    // Выпадающий список для выбора центра
+                    var centerDropdownExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = centerDropdownExpanded,
+                        onExpandedChange = { centerDropdownExpanded = it },
                         modifier = Modifier.fillMaxWidth()
-                    )
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier.menuAnchor(),
+                            readOnly = true,
+                            value = selectedCenterName,
+                            onValueChange = {},
+                            label = { Text("Медицинский центр") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = centerDropdownExpanded)
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = centerDropdownExpanded,
+                            onDismissRequest = { centerDropdownExpanded = false }
+                        ) {
+                            medCenters.forEach { center ->
+                                DropdownMenuItem(
+                                    text = { Text(center.name) },
+                                    onClick = {
+                                        selectedCenterName = center.name
+                                        medCenterId = center.id.toString()
+                                        centerDropdownExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -361,7 +411,6 @@ fun AddOrEditUserDialog(
                         var encryptedKey = key
                         if (!isLoading) {
                             try {
-                                // Если это новый пользователь или ключ был изменён, шифруем
                                 if (user == null || user.key != key) {
                                     val response = RetrofitInstance.api.encryptKey(ApiService.EncryptKeyRequest(key))
                                     encryptedKey = response.encrypted_key
@@ -397,11 +446,19 @@ fun AddOrEditUserDialog(
 }
 
 @Composable
-fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.User) -> Unit) {
+fun UserItem(
+    user: ApiService.User,
+    medCenters: List<ApiService.MedicalCenter>,
+    onDelete: () -> Unit,
+    onEdit: (ApiService.User) -> Unit
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isSendingEnabled by remember { mutableStateOf(true) }
+
+    // Получаем название центра по ID
+    val centerName = medCenters.find { it.id == user.medCenterId }?.name ?: user.centerName ?: "—"
 
     Card(
         modifier = Modifier
@@ -426,7 +483,7 @@ fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.Us
                     Text("Email: ${user.email}", style = MaterialTheme.typography.bodyMedium)
                     Text("Адрес: ${user.address}", style = MaterialTheme.typography.bodyMedium)
                     Text("Роль: ${user.role}", style = MaterialTheme.typography.bodyMedium)
-                    Text("ID центра: ${user.medCenterId}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Медцентр: $centerName", style = MaterialTheme.typography.bodyMedium)
                     Text("Telegram ID: ${user.tgId}", style = MaterialTheme.typography.bodyMedium)
                 }
                 Column {
@@ -441,7 +498,6 @@ fun UserItem(user: ApiService.User, onDelete: () -> Unit, onEdit: (ApiService.Us
                             if (isSendingEnabled) {
                                 coroutineScope.launch {
                                     try {
-                                        // Вызов на бэкенд для отправки ключа на email
                                         val response = RetrofitInstance.api.sendKeyToUser(ApiService.SendKeyRequest(user.id))
                                         if (response.isSuccessful) {
                                             snackbarHostState.showSnackbar(

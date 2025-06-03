@@ -503,14 +503,20 @@ fun AddAppointmentDialog(
         title = { Text("Добавить запись на прием сегодня") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                var expanded by remember { mutableStateOf(false) }
+
                 ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it }
+                    expanded = expanded && users.isNotEmpty(),
+                    onExpandedChange = { isExpanded ->
+                        // Открывать меню только если есть пользователи
+                        expanded = isExpanded && users.isNotEmpty()
+                    }
                 ) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = {
                             searchQuery = it
+                            // Открывать меню только если есть пользователи и длина запроса > 1
                             expanded = it.length > 1 && users.isNotEmpty()
                         },
                         label = { Text("Поиск пациента") },
@@ -519,14 +525,14 @@ fun AddAppointmentDialog(
                             .menuAnchor(),
                         singleLine = true,
                         trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && users.isNotEmpty())
                         },
                         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { expanded = false })
                     )
 
                     ExposedDropdownMenu(
-                        expanded = expanded,
+                        expanded = expanded && users.isNotEmpty(),
                         onDismissRequest = { expanded = false }
                     ) {
                         users.forEach { user ->

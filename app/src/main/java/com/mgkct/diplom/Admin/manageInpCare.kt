@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -310,27 +311,45 @@ fun AddInpatientCareDialog(
             var expanded by remember { mutableStateOf(false) }
 
             Column(modifier = Modifier.fillMaxWidth()) {
+                var expanded by remember { mutableStateOf(false) }
+                var fieldWasFocused by remember { mutableStateOf(false) }
+
                 ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it }
+                    expanded = expanded && users.isNotEmpty(),
+                    onExpandedChange = { isExpanded ->
+                        // Открывать меню только если есть пользователи
+                        expanded = isExpanded && users.isNotEmpty()
+                    }
                 ) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = {
                             searchQuery = it
+                            // Открывать меню только если есть пользователи и длина запроса > 1
                             expanded = it.length > 1 && users.isNotEmpty()
                         },
                         label = { Text("Поиск пациента") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor()
+                            .onFocusChanged { focusState ->
+                                // Открывать меню только если есть пользователи и поле не было в фокусе ранее
+                                if (focusState.isFocused && !fieldWasFocused) {
+                                    expanded = users.isNotEmpty()
+                                    fieldWasFocused = true
+                                }
+                                if (!focusState.isFocused) {
+                                    expanded = false
+                                    fieldWasFocused = false
+                                }
+                            },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { })
                     )
 
                     ExposedDropdownMenu(
-                        expanded = expanded,
+                        expanded = expanded && users.isNotEmpty(),
                         onDismissRequest = { expanded = false }
                     ) {
                         users.forEach { user ->

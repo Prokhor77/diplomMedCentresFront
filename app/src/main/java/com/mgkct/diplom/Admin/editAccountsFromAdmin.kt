@@ -74,6 +74,7 @@ fun EditAccountsFromAdminScreen(navController: NavController) {
     val usersList = remember { mutableStateListOf<ApiService.User>() }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val medCenters = remember { mutableStateListOf<ApiService.MedicalCenter>() }
 
 
     LaunchedEffect(refreshTrigger) {
@@ -167,6 +168,7 @@ fun EditAccountsFromAdminScreen(navController: NavController) {
                             UserItem(
                                 user = user,
                                 onDelete = { showDeleteDialog = user },
+                                medCenters = medCenters,
                                 onEdit = { userToEdit = it }
                             )
                             Spacer(modifier = Modifier.height(8.dp))
